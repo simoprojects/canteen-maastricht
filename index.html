@@ -1,0 +1,274 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
+<meta name="theme-color" content="#001C3D">
+<meta name="color-scheme" content="light">
+<meta name="format-detection" content="telephone=no">
+<title>Mensa Maastricht</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23001C3D'/%3E%3Cpath d='M9 22V10l7 8 7-8v12' fill='none' stroke='%23fff' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<style>
+/* Colori presi dal sito dell'Università di Maastricht (pagina della facoltà FASoS):
+   blu scuro, azzurro e rosso-arancio. Direzione grafica "A · Istituzionale". */
+:root{
+  --navy:#001C3D; --ink-2:#334964; --muted:#5B6B7E; --line:#D9E1E9; --field:#9AA7B5; --bg:#F5FAFF;
+  --red:#DA390F; --red-press:#B52700; --red-soft:#FFEDE9;
+  --blue:#0E71BB; --blue-soft:#E4F3FF; --sky:#C5E7FF;
+  --green:#0C884C; --green-ink:#0C4A00; --green-soft:#E6F4EC;
+  --r:10px; --ease:cubic-bezier(.2,.8,.2,1);
+}
+
+/* Base, con gli accorgimenti che fanno sembrare la pagina un'app vera sul telefono */
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-tap-highlight-color:transparent;-webkit-text-size-adjust:100%;text-size-adjust:100%;overscroll-behavior:none}
+body{margin:0;font:16px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;color:var(--navy);background:#DDE5EC}
+h1,h2,h3,p,ol,ul,fieldset,legend{margin:0;padding:0}
+ol,ul{list-style:none}
+a{color:inherit;text-decoration:none}
+button,input,select,textarea{font:inherit;color:inherit}
+button{border:0;background:none;padding:0;cursor:pointer}
+a,button,label{touch-action:manipulation}
+button,.btn,.tabs a,.seg label,a.card{user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+strong,b{font-weight:700}
+:focus-visible{outline:3px solid var(--blue);outline-offset:2px}
+.top :focus-visible{outline-color:#fff}
+
+/* Struttura: testata blu, contenuto che scorre, barra dei pulsanti in basso */
+.app{position:relative;display:flex;flex-direction:column;height:100vh;height:100dvh;max-width:480px;margin:0 auto;background:var(--bg);overflow:hidden}
+@media (min-width:520px){.app{box-shadow:0 0 0 1px var(--line),0 24px 60px rgba(0,28,61,.18)}}
+
+.top{background:var(--navy);color:#fff;padding:calc(12px + env(safe-area-inset-top,0px)) 16px 14px}
+.top-row{display:flex;align-items:center;gap:8px;min-height:38px}
+.top h1{flex:1;min-width:0;font-size:19px;font-weight:700;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.top-sub{margin-top:4px;color:var(--sky);font-size:14px}
+.back{display:grid;place-items:center;width:38px;height:38px;margin-left:-8px;border-radius:50%}
+.back:active{background:rgba(255,255,255,.15)}
+.lang{display:flex;gap:2px;padding:2px;border:1px solid #7FD0FF;border-radius:999px}
+.lang button{min-width:38px;padding:6px 10px;border-radius:999px;color:var(--sky);font-size:13px;font-weight:700}
+.lang button.on{background:#fff;color:var(--navy)}
+
+main{flex:1;overflow-y:auto;overscroll-behavior:contain;padding:16px 16px 28px}
+main>*+*{margin-top:12px}
+main>h2{margin-top:26px}
+main>h3{margin-top:16px}
+h2{font-size:18px;font-weight:700;letter-spacing:-.01em}
+h3{font-size:13px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+
+.tabs{display:grid;grid-template-columns:repeat(5,1fr);padding:6px 6px calc(6px + env(safe-area-inset-bottom,0px));background:#fff;border-top:1px solid var(--line)}
+.tabs a{display:flex;flex-direction:column;align-items:center;gap:2px;padding:5px 0 3px;border-radius:8px;color:var(--muted);font-size:11px;font-weight:600}
+.tabs a.on{color:var(--red)}
+.tabs a:active{background:var(--blue-soft)}
+.tabs .ic{width:22px;height:22px}
+
+/* Icone a linea */
+.ic{width:20px;height:20px;flex:none;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.ic.accent{width:24px;height:24px;color:var(--red)}
+
+/* Testi */
+.big{display:block;font-size:17px;font-weight:700;letter-spacing:-.01em}
+.muted{color:var(--muted);font-size:14px}
+.hint{color:var(--muted);font-size:13px}
+.lead{color:var(--ink-2)}
+.center{text-align:center}
+.cap{display:inline-block}
+.cap::first-letter{text-transform:uppercase}
+.grow{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.push{margin-left:auto}
+.line{display:flex;align-items:center;gap:8px;font-size:15px}
+.line .ic{color:var(--muted)}
+.line.spread{justify-content:space-between}
+.line.center{justify-content:center}
+
+/* Schede */
+.card{display:block;background:#fff;border:1px solid var(--line);border-radius:var(--r);padding:14px}
+a.card:active,.dish:active{background:#F1F7FD}
+.card.center{display:flex;flex-direction:column;align-items:center;gap:10px}
+.card.center>.btn,.card.center>.bar,.card.center>.bill,.card.center>.steps{align-self:stretch}
+.status{display:flex;align-items:center;gap:12px}
+.status>.ic{color:var(--muted)}
+.status-ic{display:grid;place-items:center;flex:none;width:42px;height:42px;border-radius:10px;background:var(--red-soft);color:var(--red-press)}
+.status-ic.navy{background:var(--navy);color:#fff}
+.canteen{display:flex;flex-direction:column;gap:10px}
+.canteen-head{display:flex;align-items:flex-start;gap:10px}
+.free{color:var(--green);font-size:14px;font-weight:700;white-space:nowrap;padding-top:2px}
+.link{display:inline-flex;align-items:center;gap:6px;min-height:32px;color:var(--blue);font-size:15px;text-align:left;text-decoration:underline;text-underline-offset:3px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.teaser{display:flex;flex-direction:column;gap:6px}
+.special{display:flex;flex-wrap:wrap;align-items:center;gap:6px;font-size:15px}
+.more{display:inline-flex;align-items:center;gap:2px;margin-top:4px;color:var(--blue);font-size:15px;font-weight:700}
+.option{display:flex;align-items:flex-start;gap:12px}
+.option .grow{gap:8px}
+.notice{display:flex;align-items:flex-start;gap:10px;padding:12px 14px;background:var(--blue-soft);border:1px solid var(--sky);border-radius:var(--r);font-size:15px}
+.notice .ic{color:var(--blue);margin-top:1px}
+.demo{display:flex;flex-direction:column;gap:8px;padding:12px 14px;border:1px dashed var(--field);border-radius:var(--r)}
+
+/* Pulsanti */
+.btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;min-height:46px;padding:10px 14px;border:1.5px solid var(--red);border-radius:8px;background:var(--red);color:#fff;font-size:16px;font-weight:700;text-align:center;line-height:1.2;transition:transform .12s var(--ease),background-color .12s}
+.btn:active{transform:scale(.97);background:var(--red-press);border-color:var(--red-press)}
+.btn.ghost{background:#fff;border-color:var(--navy);color:var(--navy)}
+.btn.ghost:active{background:var(--blue-soft);border-color:var(--navy)}
+.btn.text{min-height:40px;background:none;border-color:transparent;color:var(--red-press)}
+.btn.text:active{background:var(--red-soft);border-color:transparent}
+@media (hover:hover) and (pointer:fine){
+  .btn:hover{background:var(--red-press);border-color:var(--red-press)}
+  .btn.ghost:hover{background:var(--blue-soft);border-color:var(--navy)}
+  .btn.text:hover{background:var(--red-soft);border-color:transparent}
+  a.card:hover,.dish:hover{background:#F6FAFE}
+  .tabs a:hover{color:var(--navy)}
+  .tabs a.on:hover{color:var(--red)}
+}
+
+/* Etichette */
+.tags{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+.tag{display:inline-flex;align-items:center;gap:4px;padding:1px 8px;border:1px solid;border-radius:999px;font-size:12px;font-weight:700;white-space:nowrap}
+.tag .ic{width:12px;height:12px}
+.tag.green{color:var(--green-ink);border-color:var(--green);background:var(--green-soft)}
+.tag.blue{color:#00497D;border-color:var(--blue);background:var(--blue-soft)}
+.badge{display:inline-flex;align-items:center;gap:6px;padding:4px 12px;border-radius:999px;font-size:14px;font-weight:700}
+.badge.green{background:var(--green-soft);color:var(--green-ink)}
+.badge.grey{background:#EBEDEF;color:var(--ink-2)}
+
+/* Elenchi dentro una scheda */
+.list{padding:0}
+.list>*{display:flex;gap:10px;width:100%;padding:12px 14px;text-align:left}
+.list>*+*{border-top:1px solid var(--line)}
+.list>:first-child{border-radius:var(--r) var(--r) 0 0}
+.list>:last-child{border-radius:0 0 var(--r) var(--r)}
+.side{display:flex;flex-direction:column;align-items:flex-end;gap:2px;white-space:nowrap}
+.pick{align-items:center}
+.ideas li,.roles li{flex-direction:column;gap:2px}
+.perks li{align-items:center;font-size:15px}
+.perks .ic{color:var(--red)}
+.stepper{display:flex;align-items:center;gap:8px;flex:none}
+.stepper button{display:grid;place-items:center;width:40px;height:40px;border:1.5px solid var(--navy);border-radius:50%;background:#fff;transition:transform .12s var(--ease)}
+.stepper button:active{transform:scale(.92);background:var(--blue-soft)}
+.stepper b{min-width:18px;text-align:center;font-variant-numeric:tabular-nums}
+.cartbar{position:sticky;bottom:0;display:flex;align-items:center;justify-content:space-between;gap:12px;margin:16px -16px -28px;padding:10px 16px;background:#fff;border-top:1px solid var(--line)}
+.cartbar .btn{width:auto;flex:none}
+
+/* Passi numerati */
+.steps{counter-reset:step;display:flex;flex-direction:column;gap:10px}
+.steps li{counter-increment:step;display:flex;gap:10px;font-size:15px;text-align:left}
+.steps li::before{content:counter(step);display:grid;place-items:center;flex:none;width:24px;height:24px;border-radius:50%;background:var(--navy);color:#fff;font-size:13px;font-weight:700}
+.phases{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.phases li{display:flex;flex-direction:column;gap:2px;padding:8px 10px;background:#fff;border:1px solid var(--line);border-radius:8px;color:var(--muted);font-size:13px}
+.phases b{display:block;color:var(--navy);font-size:14px}
+.phases b::first-letter{text-transform:uppercase}
+.phases li.on{background:var(--red-soft);border-color:var(--red);box-shadow:inset 0 0 0 1px var(--red);color:var(--navy)}
+
+/* Moduli: il testo a 16px evita lo zoom automatico dell'iPhone */
+.form{display:flex;flex-direction:column;gap:8px}
+label,legend{font-size:14px;font-weight:700}
+.form>label,.form>fieldset{margin-top:6px}
+.form>.btn{margin-top:8px}
+legend{margin-bottom:8px}
+fieldset{border:0;min-width:0}
+input,select,textarea{width:100%;min-height:46px;padding:10px 12px;border:1px solid var(--field);border-radius:8px;background:#fff;font-size:16px}
+textarea{min-height:88px;resize:vertical}
+input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid var(--sky);outline-offset:0;border-color:var(--blue)}
+.error{color:var(--red-press);font-size:14px;font-weight:700}
+.error:empty{display:none}
+.seg{display:flex;gap:8px}
+.seg label{position:relative;flex:1}
+.seg input{position:absolute;opacity:0;width:1px;height:1px;min-height:0;padding:0;border:0}
+.seg span,.seg button,.chip{display:grid;place-items:center;min-height:44px;padding:0 10px;border:1.5px solid var(--field);border-radius:8px;background:#fff;font-size:15px;font-weight:700}
+.days .chip,.seg.small span,.seg.small button{text-transform:capitalize}   /* nomi dei giorni: "ma" → "Ma" */
+.seg button{flex:1}
+.seg input:checked+span,.seg button.on,.chip.on{background:var(--navy);border-color:var(--navy);color:#fff}
+.seg input:focus-visible+span{outline:3px solid var(--blue);outline-offset:2px}
+.seg.small{gap:6px}
+.seg.small span,.seg.small button{min-height:40px;padding:0 4px;font-size:14px}
+.days{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+.filters{display:flex;flex-wrap:wrap;gap:6px}
+.chip.round{min-height:38px;padding:0 14px;border-radius:999px;font-size:14px;text-transform:none}
+
+/* Posto prenotato, timer, QR e scanner */
+.seat{font-size:24px;font-weight:700;letter-spacing:-.01em;line-height:1.2}
+.timer{font-size:54px;font-weight:700;line-height:1;font-variant-numeric:tabular-nums}
+.bar{height:8px;border-radius:999px;background:#E1E8EF;overflow:hidden}
+.bar i{display:block;height:100%;border-radius:999px;background:var(--blue)}
+.bar.thin{height:4px;width:min(260px,72%)}
+.qr-bar{width:100%;transform-origin:left;animation:drain 3s linear infinite}
+@keyframes drain{from{transform:scaleX(1)}to{transform:scaleX(0)}}
+.qr{width:min(260px,72%);aspect-ratio:1;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:#fff}
+.qr svg{display:block;width:100%;height:100%}
+.qr.small{width:170px}
+.scanner{position:relative;aspect-ratio:1;border-radius:12px;overflow:hidden;background:var(--navy)}
+.scanner video{display:block;width:100%;height:100%;object-fit:cover}
+.frame{position:absolute;inset:18%;border:3px solid #fff;border-radius:16px;box-shadow:0 0 0 999px rgba(0,28,61,.35)}
+
+/* Tabelle: conto e valori nutrizionali */
+.bill,.nutri{width:100%;border-collapse:collapse;font-size:15px;text-align:left}
+.bill td{padding:6px 0;vertical-align:top}
+.bill td:last-child{padding-left:12px;text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+.bill td[colspan]{padding-left:0;text-align:left;white-space:normal}
+.bill .sep td{border-top:1px solid var(--line)}
+.bill .good td{color:var(--green-ink);font-weight:700}
+.bill .total td{border-top:2px solid var(--navy);font-size:17px;font-weight:700}
+.nutri th{padding:7px 0;font-weight:700}
+.nutri td{text-align:right;font-variant-numeric:tabular-nums}
+.nutri tr+tr{border-top:1px solid var(--line)}
+.nutri .sub th{padding-left:14px;font-weight:400;color:var(--ink-2)}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chips li{padding:3px 10px;border:1px solid #F3B7A4;border-radius:999px;background:var(--red-soft);color:#8A1C00;font-size:14px;font-weight:700}
+.price{margin-left:auto;font-size:17px;font-weight:700}
+
+/* Pannello che sale dal basso (dettaglio piatto, scelta mappe) */
+.sheet{width:100%;max-width:min(480px,100%);max-height:88dvh;margin:auto auto 0;padding:0;border:0;border-radius:16px 16px 0 0;background:#fff;color:var(--navy);overflow:hidden}
+.sheet::backdrop{background:rgba(0,28,61,.5)}
+.sheet[open]{animation:rise .22s var(--ease)}
+@keyframes rise{from{transform:translateY(24px);opacity:0}}
+.sheet-in{position:relative;display:flex;flex-direction:column;gap:10px;max-height:88dvh;padding:20px 16px calc(20px + env(safe-area-inset-bottom,0px));overflow-y:auto;overscroll-behavior:contain}
+.sheet-in h2{padding-right:44px}
+.sheet-in h3{margin-top:8px}
+.sheet-x{position:absolute;top:12px;right:12px;display:grid;place-items:center;width:40px;height:40px;border-radius:50%;background:#EEF2F6}
+
+/* Messaggio breve che compare in alto, sotto la testata (così non copre i pulsanti in basso) */
+#toast{position:absolute;left:16px;right:16px;top:calc(96px + env(safe-area-inset-top,0px));z-index:5;padding:12px 14px;border-radius:10px;background:var(--navy);box-shadow:0 6px 20px rgba(0,28,61,.25);color:#fff;font-size:15px;font-weight:700;text-align:center;opacity:0;transform:translateY(-8px);pointer-events:none;transition:opacity .2s,transform .2s var(--ease)}
+#toast.on{opacity:1;transform:none}
+
+@media (prefers-reduced-motion:reduce){
+  .btn,.stepper button,#toast{transition:none}
+  .sheet[open],.qr-bar{animation:none}
+}
+</style>
+</head>
+<body>
+
+<!-- Icone a linea usate nell'app (disegni in stile Feather/Lucide) -->
+<svg xmlns="http://www.w3.org/2000/svg" style="display:none">
+  <symbol id="i-home" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></symbol>
+  <symbol id="i-utensils" viewBox="0 0 24 24"><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3zm0 0v7"/></symbol>
+  <symbol id="i-qr" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3h-3zM21 14v3M14 21h3M21 21h-.01"/></symbol>
+  <symbol id="i-calendar" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></symbol>
+  <symbol id="i-briefcase" viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></symbol>
+  <symbol id="i-map-pin" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></symbol>
+  <symbol id="i-arrow-left" viewBox="0 0 24 24"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></symbol>
+  <symbol id="i-chevron-right" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></symbol>
+  <symbol id="i-minus" viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12"/></symbol>
+  <symbol id="i-package" viewBox="0 0 24 24"><line x1="16.5" y1="9.4" x2="7.5" y2="4.21"/><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></symbol>
+  <symbol id="i-camera" viewBox="0 0 24 24"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></symbol>
+  <symbol id="i-users" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></symbol>
+  <symbol id="i-armchair" viewBox="0 0 24 24"><path d="M19 9V6a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2v3"/><path d="M3 16a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-5a2 2 0 0 0-4 0v1.5a.5.5 0 0 1-.5.5h-9a.5.5 0 0 1-.5-.5V11a2 2 0 0 0-4 0z"/><path d="M5 18v2"/><path d="M19 18v2"/></symbol>
+  <symbol id="i-leaf" viewBox="0 0 24 24"><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10z"/><path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12"/></symbol>
+</svg>
+
+<div class="app">
+  <header class="top" id="top"></header>
+  <main id="view"></main>
+  <nav class="tabs" id="tabs" aria-label="Mensa Maastricht"></nav>
+  <div id="toast" role="status" aria-live="polite"></div>
+</div>
+<dialog id="sheet" class="sheet"></dialog>
+
+<script src="data.js"></script>
+<script src="i18n.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
