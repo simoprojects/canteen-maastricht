@@ -320,7 +320,9 @@ function home() {
       <div class="row2">
         <a class="card teaser" href="#dinner">${icon('calendar', 'accent')}<strong>${t('dinnerTitle')}</strong><span class="muted">${t('dinnerTeaser')}</span></a>
         <a class="card teaser" href="#jobs">${icon('briefcase', 'accent')}<strong>${t('jobsTitle')}</strong><span class="muted">${t('jobsTeaser')}</span></a>
-      </div>`,
+      </div>
+
+      <p class="hint center">${t('unofficial')}</p>`,
   };
 }
 
