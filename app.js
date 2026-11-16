@@ -1,4 +1,4 @@
-// Logica dell'app Mensa Maastricht.
+// Logica dell'app Canteen Maastricht.
 // La prima parte non tocca la pagina: sono funzioni "pure" che `node check.js` può verificare.
 // La seconda parte (più in basso) disegna le schermate.
 
@@ -284,7 +284,7 @@ function statusCards() {
 function home() {
   const day = new Date().getDay(), isOpen = day >= 1 && day <= 5;
   return {
-    title: 'Mensa Maastricht', sub: t('hello', { name: STUDENT.name.split(' ')[0] }), tab: 'home',
+    title: 'Canteen Maastricht', sub: t('hello', { name: STUDENT.name.split(' ')[0] }), tab: 'home',
     body: `
       ${statusCards()}
       <a class="card status" href="#qr">
