@@ -6,7 +6,18 @@
 // Studente di esempio: non c'è ancora un login vero.
 const STUDENT = { name: 'Alex de Vries', id: 'i6123456' };
 
-const DISCOUNT = 0.2;          // sconto studenti (valore di esempio), una volta al giorno
+// Sconti e punti (valori di esempio: lo staff li può cambiare dal pannello staff).
+// I punti si azzerano il primo giorno di ogni mese, insieme ai premi non usati.
+const REWARDS = {
+  dailyDiscount: 0.1,   // sconto studenti: una volta al giorno, con il QR personale
+  perEuro: 10,          // punti per ogni euro pagato
+  onTime: 25,           // punti in più se lasci il posto entro il tempo prenotato
+  graceMinutes: 2,      // minuti di tolleranza dopo la fine del tempo
+  coffeeEvery: 200,     // ogni 200 punti: un caffè gratis
+  goldAt: 800,          // da 800 punti: sconto su tutti i pasti fino a fine mese
+  goldDiscount: 0.2,    // quanto vale quello sconto (al posto dello sconto giornaliero, non in più)
+};
+
 const MAX_SEAT_MINUTES = 30;   // tempo massimo al tavolo
 const LUNCH = { open: '11:30', close: '14:30' };   // orario pranzo, lunedì-venerdì
 
@@ -185,8 +196,8 @@ const MENU = {
       name: { en: 'Gluten-free cheese roll', nl: 'Glutenvrij broodje kaas' },
       desc: { en: 'Gluten-free roll with Gouda, individually sealed.', nl: 'Glutenvrij bolletje met Goudse kaas, per stuk verpakt.' } },
     { id: 'gf-hummus', cat: 'bread', price: 3.95, diet: 'vegan', gf: true, al: ['sesame'], n: [350, 13, 1.5, 46, 5, 9, 1.5],
-      name: { en: 'Gluten-free hummus roll', nl: 'Glutenvrij broodje hummus' },
-      desc: { en: 'Gluten-free roll with hummus and grilled vegetables, individually sealed.', nl: 'Glutenvrij bolletje met hummus en gegrilde groenten, per stuk verpakt.' } },
+      name: { en: 'Gluten-free hummus wrap', nl: 'Glutenvrije hummuswrap' },
+      desc: { en: 'Corn tortilla with hummus and grilled vegetables, individually sealed.', nl: 'Maïstortilla met hummus en gegrilde groenten, per stuk verpakt.' } },
     { id: 'gf-soep', cat: 'soup', price: 2.50, diet: 'vegan', gf: true, al: ['celery'], n: [110, 3.5, 0.5, 15, 9, 3, 1.8],
       name: { en: 'Gluten-free tomato soup', nl: 'Glutenvrije tomatensoep' },
       desc: { en: 'Made with gluten-free stock, served in a sealed cup.', nl: 'Bereid met glutenvrije bouillon, geserveerd in een afgesloten beker.' } },
@@ -233,3 +244,80 @@ const JOBS = [
   { id: 'dishes', name: { en: 'Dishwashing', nl: 'Spoelkeuken' },
     desc: { en: 'Keep trays, plates and boxes clean.', nl: 'Houd dienbladen, borden en boxen schoon.' } },
 ];
+
+// Foto dei piatti: Wikimedia Commons, con licenze libere (autore e licenza si vedono nella scheda del piatto).
+// Le foto dei siti di ricette sono protette da copyright, queste invece si possono usare citando l'autore.
+// Lo staff può sostituirle dal pannello staff; la zuppa senza glutine usa la stessa foto della tomatensoep.
+const PHOTOS = {
+  tomatensoep: { src: 'https://thumb.wikimedia.org/wikipedia/commons/thumb/b/b5/Tomato_soup%2C_Turkish_style.jpg/500px-Tomato_soup%2C_Turkish_style.jpg',
+    by: 'E4024', license: 'CC BY-SA 4.0', page: 'https://commons.wikimedia.org/wiki/File:Tomato_soup,_Turkish_style.jpg' },
+  'broodje-kaas': { src: 'https://thumb.wikimedia.org/wikipedia/commons/thumb/3/37/Cheese_roll_at_The_Original_Tea_Hut_at_High_Beach%2C_Essex%2C_England.jpg/500px-Cheese_roll_at_The_Original_Tea_Hut_at_High_Beach%2C_Essex%2C_England.jpg',
+    by: 'Acabashi', license: 'CC BY-SA 4.0', page: 'https://commons.wikimedia.org/wiki/File:Cheese_roll_at_The_Original_Tea_Hut_at_High_Beach,_Essex,_England.jpg' },
+  'broodje-gezond': { src: 'https://thumb.wikimedia.org/wikipedia/commons/thumb/f/f6/20220822_Broodje_gezond_%28cropped%29.jpg/500px-20220822_Broodje_gezond_%28cropped%29.jpg',
+    by: 'Ziko van Dijk', license: 'CC BY-SA 4.0', page: 'https://commons.wikimedia.org/wiki/File:20220822_Broodje_gezond_(cropped).jpg' },
+  'broodje-kroket': { src: 'https://thumb.wikimedia.org/wikipedia/commons/thumb/6/60/Broodje_kroket_%2835832701711%29.jpg/500px-Broodje_kroket_%2835832701711%29.jpg',
+    by: 'www.snack-nieuws.nl', license: 'CC BY 2.0', page: 'https://commons.wikimedia.org/wiki/File:Broodje_kroket_(35832701711).jpg' },
+  tosti: { src: 'https://thumb.wikimedia.org/wikipedia/commons/thumb/3/3e/Croque_monsieur.jpg/500px-Croque_monsieur.jpg',
+    by: 'Michael Brewer', license: 'CC BY-SA 2.5', page: 'https://commons.wikimedia.org/wiki/File:Croque_monsieur.jpg' },
+  'broodje-hummus': { src: 'https://thumb.wikimedia.org/wikipedia/commons/thumb/3/3e/Toasted_tomato%2C_avocado%2C_cucumber_and_hummus_sandwich_%284815088397%29.jpg/500px-Toasted_tomato%2C_avocado%2C_cucumber_and_hummus_sandwich_%284815088397%29.jpg',
+    by: 'Jennifer from Vancouver, Canada', license: 'CC BY 2.0', page: 'https://commons.wikimedia.org/wiki/File:Toasted_tomato,_avocado,_cucumber_and_hummus_sandwich_(4815088397).jpg' },
+  uitsmijter: { src: 'https://thumb.wikimedia.org/wikipedia/commons/thumb/4/4c/Uitsmijter_Belgium.jpg/500px-Uitsmijter_Belgium.jpg',
+    by: 'Varech', license: 'Public domain', page: 'https://commons.wikimedia.org/wiki/File:Uitsmijter_Belgium.jpg' },
+  friet: { src: 'https://thumb.wikimedia.org/wikipedia/commons/thumb/b/b6/Patat_met_mayonaise_%2835006883325%29.jpg/500px-Patat_met_mayonaise_%2835006883325%29.jpg',
+    by: 'www.snack-nieuws.nl', license: 'CC BY 2.0', page: 'https://commons.wikimedia.org/wiki/File:Patat_met_mayonaise_(35006883325).jpg' },
+  kaassouffle: { src: 'https://thumb.wikimedia.org/wikipedia/commons/thumb/3/33/Kaassouffle.JPG/500px-Kaassouffle.JPG',
+    by: 'Kwiki', license: 'Public domain', page: 'https://commons.wikimedia.org/wiki/File:Kaassouffle.JPG' },
+  salade: { src: 'https://thumb.wikimedia.org/wikipedia/commons/thumb/b/b7/Plant-fruit-bowl-dish-food-salad-1200225-pxhere.jpg/500px-Plant-fruit-bowl-dish-food-salad-1200225-pxhere.jpg',
+    by: 'Unknown author', license: 'CC0', page: 'https://commons.wikimedia.org/wiki/File:Plant-fruit-bowl-dish-food-salad-1200225-pxhere.jpg' },
+  vlaai: { src: 'https://thumb.wikimedia.org/wikipedia/commons/thumb/a/a0/Kirsch-Vlario.jpg/500px-Kirsch-Vlario.jpg',
+    by: 'Unknown author', license: 'CC BY-SA 3.0', page: 'https://commons.wikimedia.org/wiki/File:Kirsch-Vlario.jpg' },
+  vla: { src: 'https://thumb.wikimedia.org/wikipedia/commons/thumb/4/4b/Vanilla_Vla_dessert.jpg/500px-Vanilla_Vla_dessert.jpg',
+    by: 'Vera de Kok', license: 'CC BY-SA 4.0', page: 'https://commons.wikimedia.org/wiki/File:Vanilla_Vla_dessert.jpg' },
+  fruit: { src: 'https://thumb.wikimedia.org/wikipedia/commons/thumb/b/bb/Pears_and_apples_in_the_plate.jpg/500px-Pears_and_apples_in_the_plate.jpg',
+    by: 'Beko', license: 'CC BY 4.0', page: 'https://commons.wikimedia.org/wiki/File:Pears_and_apples_in_the_plate.jpg' },
+  melk: { src: 'https://thumb.wikimedia.org/wikipedia/commons/thumb/2/23/Buttermilk-%28right%29-and-Milk-%28left%29.jpg/500px-Buttermilk-%28right%29-and-Milk-%28left%29.jpg',
+    by: 'Ukko-wc', license: 'CC BY-SA 3.0', page: 'https://commons.wikimedia.org/wiki/File:Buttermilk-(right)-and-Milk-(left).jpg' },
+  koffie: { src: 'https://thumb.wikimedia.org/wikipedia/commons/thumb/4/45/A_small_cup_of_coffee.JPG/500px-A_small_cup_of_coffee.JPG',
+    by: 'Julius Schorzman', license: 'CC BY-SA 2.0', page: 'https://commons.wikimedia.org/wiki/File:A_small_cup_of_coffee.JPG' },
+  pompoensoep: { src: 'https://thumb.wikimedia.org/wikipedia/commons/thumb/a/a8/Pumpkin_soup_preparation.jpg/500px-Pumpkin_soup_preparation.jpg',
+    by: 'MOs810', license: 'CC BY-SA 4.0', page: 'https://commons.wikimedia.org/wiki/File:Pumpkin_soup_preparation.jpg' },
+  boerenkool: { src: 'https://thumb.wikimedia.org/wikipedia/commons/thumb/5/50/Boerenkool_met_worst.jpg/500px-Boerenkool_met_worst.jpg',
+    by: 'Amin', license: 'CC BY-SA 4.0', page: 'https://commons.wikimedia.org/wiki/File:Boerenkool_met_worst.jpg' },
+  'boerenkool-vegan': { src: 'https://thumb.wikimedia.org/wikipedia/commons/thumb/5/50/Boerenkool_stamppot.jpg/500px-Boerenkool_stamppot.jpg',
+    by: 'M.Minderhoud', license: 'CC BY-SA 3.0', page: 'https://commons.wikimedia.org/wiki/File:Boerenkool_stamppot.jpg' },
+  erwtensoep: { src: 'https://thumb.wikimedia.org/wikipedia/commons/thumb/1/1b/Erwtensoep_roggebrood_katenspek.jpg/500px-Erwtensoep_roggebrood_katenspek.jpg',
+    by: 'Takeaway', license: 'CC BY-SA 3.0', page: 'https://commons.wikimedia.org/wiki/File:Erwtensoep_roggebrood_katenspek.jpg' },
+  hutspot: { src: 'https://thumb.wikimedia.org/wikipedia/commons/thumb/2/2d/2015_0330_Hutspot_karbonade.jpg/500px-2015_0330_Hutspot_karbonade.jpg',
+    by: 'Takeaway', license: 'CC BY-SA 4.0', page: 'https://commons.wikimedia.org/wiki/File:2015_0330_Hutspot_karbonade.jpg' },
+  knolselderij: { src: 'https://thumb.wikimedia.org/wikipedia/commons/thumb/9/95/Veganes_Sellerieschnitzel_Waldhaus_Einsiedel.jpg/500px-Veganes_Sellerieschnitzel_Waldhaus_Einsiedel.jpg',
+    by: 'Benreis', license: 'CC BY-SA 4.0', page: 'https://commons.wikimedia.org/wiki/File:Veganes_Sellerieschnitzel_Waldhaus_Einsiedel.jpg' },
+  mosterdsoep: { src: 'https://thumb.wikimedia.org/wikipedia/commons/thumb/2/21/Mustard_soup_%288479467759%29.jpg/500px-Mustard_soup_%288479467759%29.jpg',
+    by: 'Cristian Bortes from Cluj-Napoca, Romania', license: 'CC BY 2.0', page: 'https://commons.wikimedia.org/wiki/File:Mustard_soup_(8479467759).jpg' },
+  zuurvlees: { src: 'https://thumb.wikimedia.org/wikipedia/commons/thumb/0/09/Zuurvlees_met_frietjes.jpg/500px-Zuurvlees_met_frietjes.jpg',
+    by: 'Hay Kranen', license: 'CC BY 4.0', page: 'https://commons.wikimedia.org/wiki/File:Zuurvlees_met_frietjes.jpg' },
+  zuurkool: { src: 'https://thumb.wikimedia.org/wikipedia/commons/thumb/b/b5/Kiszona_kapusta.JPG/500px-Kiszona_kapusta.JPG',
+    by: 'Alina Zienowicz Ala z', license: 'CC BY-SA 3.0', page: 'https://commons.wikimedia.org/wiki/File:Kiszona_kapusta.JPG' },
+  paddenstoelensoep: { src: 'https://thumb.wikimedia.org/wikipedia/commons/thumb/a/aa/Mushroom_soup_with_Madeira_cream.jpg/500px-Mushroom_soup_with_Madeira_cream.jpg',
+    by: 'Siobhan Leachman', license: 'CC0', page: 'https://commons.wikimedia.org/wiki/File:Mushroom_soup_with_Madeira_cream.jpg' },
+  witlof: { src: 'https://thumb.wikimedia.org/wikipedia/commons/thumb/c/cf/Chicory_%28witlof%29%2C_oven_dish_with_ham_and_cheese.jpg/500px-Chicory_%28witlof%29%2C_oven_dish_with_ham_and_cheese.jpg',
+    by: 'Vincent van Zeijst', license: 'CC BY-SA 4.0', page: 'https://commons.wikimedia.org/wiki/File:Chicory_(witlof),_oven_dish_with_ham_and_cheese.jpg' },
+  pompoencurry: { src: 'https://thumb.wikimedia.org/wikipedia/commons/thumb/a/a3/Chana_Masala_in_Paul%C3%ADnia%2C_2023-10-16.jpg/500px-Chana_Masala_in_Paul%C3%ADnia%2C_2023-10-16.jpg',
+    by: 'Parzeus', license: 'CC BY-SA 4.0', page: 'https://commons.wikimedia.org/wiki/File:Chana_Masala_in_Paul%C3%ADnia,_2023-10-16.jpg' },
+  preisoep: { src: 'https://thumb.wikimedia.org/wikipedia/commons/thumb/2/26/Potato_Leek_Soup_%284258747258%29.jpg/500px-Potato_Leek_Soup_%284258747258%29.jpg',
+    by: 'Vegan Feast Catering', license: 'CC BY 2.0', page: 'https://commons.wikimedia.org/wiki/File:Potato_Leek_Soup_(4258747258).jpg' },
+  kibbeling: { src: 'https://thumb.wikimedia.org/wikipedia/commons/thumb/e/eb/Kibbeling_mit_Kartoffelsalat%2C_Vareler_Hafen.jpg/500px-Kibbeling_mit_Kartoffelsalat%2C_Vareler_Hafen.jpg',
+    by: 'Nemracc', license: 'CC BY-SA 4.0', page: 'https://commons.wikimedia.org/wiki/File:Kibbeling_mit_Kartoffelsalat,_Vareler_Hafen.jpg' },
+  spruitjes: { src: 'https://thumb.wikimedia.org/wikipedia/commons/thumb/5/56/Brussels_sprouts_-_Mussel_Bar_-_Ballston_-_2018_-_Sarah_Stierch_01.jpg/500px-Brussels_sprouts_-_Mussel_Bar_-_Ballston_-_2018_-_Sarah_Stierch_01.jpg',
+    by: 'Missvain', license: 'CC BY 4.0', page: 'https://commons.wikimedia.org/wiki/File:Brussels_sprouts_-_Mussel_Bar_-_Ballston_-_2018_-_Sarah_Stierch_01.jpg' },
+  'gf-kaas': { src: 'https://thumb.wikimedia.org/wikipedia/commons/thumb/f/fc/Non_gluten_bread.jpg/500px-Non_gluten_bread.jpg',
+    by: 'Bigvai Muhoti', license: 'CC BY-SA 4.0', page: 'https://commons.wikimedia.org/wiki/File:Non_gluten_bread.jpg' },
+  'gf-hummus': { src: 'https://thumb.wikimedia.org/wikipedia/commons/thumb/9/99/Vegetable_and_Basil-Garlic_Hummus_Wrap_%284800115998%29.jpg/500px-Vegetable_and_Basil-Garlic_Hummus_Wrap_%284800115998%29.jpg',
+    by: 'Jennifer from Vancouver, Canada', license: 'CC BY 2.0', page: 'https://commons.wikimedia.org/wiki/File:Vegetable_and_Basil-Garlic_Hummus_Wrap_(4800115998).jpg' },
+  'gf-bowl-kip': { src: 'https://thumb.wikimedia.org/wikipedia/commons/thumb/5/56/Lemongrass_chicken_rice_bowl_with_kimchi.jpg/500px-Lemongrass_chicken_rice_bowl_with_kimchi.jpg',
+    by: 'Gary Stevens', license: 'CC BY 2.0', page: 'https://commons.wikimedia.org/wiki/File:Lemongrass_chicken_rice_bowl_with_kimchi.jpg' },
+  'gf-bowl-tofu': { src: 'https://thumb.wikimedia.org/wikipedia/commons/thumb/6/66/Salt_%26_Pepper_Tofu_Rice_Bowl_-_Tiger_Bites_Pig_2025-11-20.jpg/500px-Salt_%26_Pepper_Tofu_Rice_Bowl_-_Tiger_Bites_Pig_2025-11-20.jpg',
+    by: 'Andy Li', license: 'CC0', page: 'https://commons.wikimedia.org/wiki/File:Salt_%26_Pepper_Tofu_Rice_Bowl_-_Tiger_Bites_Pig_2025-11-20.jpg' },
+  'gf-brownie': { src: 'https://thumb.wikimedia.org/wikipedia/commons/thumb/7/7e/Brownie_IMG_001.jpg/500px-Brownie_IMG_001.jpg',
+    by: 'Phadke09', license: 'CC BY-SA 4.0', page: 'https://commons.wikimedia.org/wiki/File:Brownie_IMG_001.jpg' },
+};
+PHOTOS['gf-soep'] = PHOTOS.tomatensoep;

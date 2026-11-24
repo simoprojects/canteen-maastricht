@@ -150,10 +150,10 @@ function matchesFilter(dish, filter) {
 }
 
 // Totale di un ordine, in centesimi per evitare errori di arrotondamento.
-// lines = [{ price, qty }]. Lo sconto studenti si applica solo se oggi è ancora disponibile.
-function orderTotal(lines, useDiscount) {
+// lines = [{ price, qty }], rate = sconto da applicare (0 = nessuno sconto).
+function orderTotal(lines, rate) {
   const subtotal = lines.reduce((sum, l) => sum + Math.round(l.price * 100) * l.qty, 0);
-  const discount = useDiscount ? Math.round(subtotal * DISCOUNT) : 0;
+  const discount = Math.round(subtotal * rate);
   return { subtotal, discount, total: subtotal - discount };
 }
 
@@ -168,6 +168,112 @@ function defaultTime(now = new Date()) {
   const time = `${String(next.getHours()).padStart(2, '0')}:${String(next.getMinutes()).padStart(2, '0')}`;
   if (time < LUNCH.open) return LUNCH.open;
   return time <= LUNCH.close ? time : '12:00';
+}
+
+/* ---------- Punti e premi ---------- */
+
+// Mese come testo 'AAAA-MM' (ora locale): i punti valgono solo nel mese in cui li guadagni.
+const monthKey = (now = new Date()) => `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+
+// Punti del mese: se quelli salvati sono di un mese passato (o rovinati) si riparte da zero.
+function monthPoints(saved, now = new Date()) {
+  const month = monthKey(now);
+  if (saved && saved.month === month && Number.isFinite(saved.points) && Number.isFinite(saved.coffeesUsed) && Array.isArray(saved.log)) return saved;
+  return { month, points: 0, coffeesUsed: 0, log: [] };
+}
+
+// Punti per un pasto: REWARDS.perEuro per ogni euro pagato (cents = centesimi pagati, dopo lo sconto).
+const mealPoints = cents => Math.floor((Math.max(0, cents) * REWARDS.perEuro) / 100);
+
+// Punti in più se lasci il posto entro la fine del tempo prenotato (più qualche minuto di tolleranza).
+const onTimePoints = (leftAt, endAt) => (leftAt <= endAt + REWARDS.graceMinutes * 60000 ? REWARDS.onTime : 0);
+
+// Situazione dei premi: caffè guadagnati e ancora da usare, sconto del mese raggiunto o no.
+function rewardStatus(state) {
+  const coffeesEarned = Math.floor(state.points / REWARDS.coffeeEvery);
+  return {
+    points: state.points,
+    coffeesEarned,
+    coffeesLeft: Math.max(0, coffeesEarned - state.coffeesUsed),
+    toCoffee: REWARDS.coffeeEvery - (state.points % REWARDS.coffeeEvery),
+    gold: state.points >= REWARDS.goldAt,
+    toGold: Math.max(0, REWARDS.goldAt - state.points),
+  };
+}
+
+// Sconto su un pasto: se hai raggiunto lo sconto del mese vale su tutti i pasti,
+// altrimenti c'è lo sconto studenti una volta al giorno. I due sconti non si sommano.
+const discountRate = (gold, dailyAvailable) => (gold ? REWARDS.goldDiscount : dailyAvailable ? REWARDS.dailyDiscount : 0);
+
+// Primo giorno del mese successivo: è lì che i punti si azzerano.
+const resetDate = (now = new Date()) => new Date(now.getFullYear(), now.getMonth() + 1, 1);
+
+/* ---------- Foto e piatti esauriti ---------- */
+
+// Foto di un piatto: quella scelta dallo staff, altrimenti quella di Wikimedia Commons (se c'è).
+const photoOf = d => (d.photo ? { src: d.photo } : PHOTOS[d.id] || null);
+// Versione piccola della stessa foto: Wikimedia prepara le miniature in misure fisse (250 px va bene).
+const thumbOf = src => src.replace(/\/500px-/, '/250px-');
+// Lo staff segna un piatto come esaurito per un giorno preciso (AAAA-MM-GG).
+const soldOut = (d, day) => d.soldOutOn === day;
+
+/* ---------- Dati modificati dallo staff ---------- */
+
+const DIETS = ['', 'veg', 'vegan'];
+const ANIMAL = ['milk', 'egg', 'fish', 'crustaceans', 'molluscs'];   // allergeni che un piatto vegano non può avere
+const bothLangs = x => !!x && typeof x.en === 'string' && x.en.trim() !== '' && typeof x.nl === 'string' && x.nl.trim() !== '';
+
+// Controlla un piatto: restituisce l'elenco dei problemi (vuoto se va bene).
+// glutenFreeCorner = il piatto sta nell'angolo senza glutine.
+function dishProblems(d, glutenFreeCorner) {
+  if (!d || typeof d !== 'object') return ['dish'];
+  const p = [];
+  if (typeof d.id !== 'string' || !/^[a-z0-9-]{1,40}$/.test(d.id)) p.push('id');
+  if (!bothLangs(d.name)) p.push('name');
+  if (!bothLangs(d.desc)) p.push('desc');
+  if (!Object.hasOwn(CATEGORIES, d.cat)) p.push('cat');
+  if (!(Number.isFinite(d.price) && d.price > 0 && d.price < 100)) p.push('price');
+  if (!DIETS.includes(d.diet)) p.push('diet');
+  if (!Array.isArray(d.al) || !d.al.every(a => Object.hasOwn(ALLERGENS, a))) p.push('al');
+  else if (d.diet === 'vegan' && d.al.some(a => ANIMAL.includes(a))) p.push('vegan');
+  if (!Array.isArray(d.n) || d.n.length !== NUTRIENTS.length || !d.n.every(v => Number.isFinite(v) && v >= 0 && v < 5000)) p.push('n');
+  if (d.photo !== undefined && !/^https:\/\/[^\s"'<>]+$/.test(d.photo)) p.push('photo');
+  if (d.soldOutOn !== undefined && !/^\d{4}-\d{2}-\d{2}$/.test(d.soldOutOn)) p.push('soldOut');
+  if (glutenFreeCorner ? !(d.gf === true && Array.isArray(d.al) && !d.al.includes('gluten')) : d.gf !== undefined) p.push('gf');
+  return p;
+}
+
+// Tutto il menu salvato dallo staff è valido? (stagione in due lingue, piatti corretti, nessun id ripetuto)
+function menuValid(menu) {
+  if (!menu || !bothLangs(menu.season) || !Array.isArray(menu.daily) || !Array.isArray(menu.glutenFree) || !menu.seasonal) return false;
+  const lists = [[menu.daily, false], [menu.glutenFree, true], ...[1, 2, 3, 4, 5].map(day => [menu.seasonal[day], false])];
+  if (!lists.every(([list, gf]) => Array.isArray(list) && list.every(d => dishProblems(d, gf).length === 0))) return false;
+  const ids = lists.flatMap(([list]) => list.map(d => d.id));
+  return new Set(ids).size === ids.length;
+}
+
+// Limiti ragionevoli per le regole di punti e sconti (gli sconti sono frazioni: 0.2 = 20%).
+const REWARD_LIMITS = {
+  dailyDiscount: [0, 0.5], perEuro: [0, 100], onTime: [0, 500], graceMinutes: [0, 15],
+  coffeeEvery: [10, 5000], goldAt: [10, 20000], goldDiscount: [0, 0.5],
+};
+const rewardsValid = r => !!r && Object.entries(REWARD_LIMITS).every(([k, [min, max]]) => Number.isFinite(r[k]) && r[k] >= min && r[k] <= max);
+
+// Applica le modifiche salvate dallo staff, ma solo le parti valide: dati rovinati non rompono l'app.
+function applyStaffData(saved) {
+  if (!saved || typeof saved !== 'object') return;
+  if (menuValid(saved.menu)) {
+    MENU.season = saved.menu.season;
+    MENU.daily = saved.menu.daily;
+    MENU.glutenFree = saved.menu.glutenFree;
+    for (const day of [1, 2, 3, 4, 5]) MENU.seasonal[day] = saved.menu.seasonal[day];
+  }
+  if (rewardsValid(saved.rewards)) for (const k of Object.keys(REWARD_LIMITS)) REWARDS[k] = saved.rewards[k];
+  const dinner = saved.dinner;
+  if (dinner && bothLangs(dinner.theme) && bothLangs(dinner.themeDesc)) {
+    DINNER.theme = { en: dinner.theme.en, nl: dinner.theme.nl };
+    DINNER.themeDesc = { en: dinner.themeDesc.en, nl: dinner.themeDesc.nl };
+  }
 }
 
 /* =====================================================================
@@ -186,7 +292,7 @@ const store = {
 
 let lang = 'en';          // lingua corrente: 'en' oppure 'nl'
 let booking = null;       // posto prenotato: { canteen, time, minutes, table, seat, checkedInAt }
-let order = null;         // ordine da asporto pagato: { canteen, code, time, lines, discount, total }
+let order = null;         // ordine da asporto pagato: { canteen, code, time, lines, discount, gold, rate, total, points }
 let cart = {};            // carrello dell'asporto: { idPiatto: quantità }
 let paying = false;       // asporto: false = scelta dei piatti, true = pagamento
 let menuDay = 1;          // giorno mostrato nel menu (1 = lunedì ... 5 = venerdì)
@@ -195,8 +301,13 @@ let demoDay = null;       // giorno simulato per provare la cena del mercoledì
 let myIdeas = [];         // idee per la cena inviate da questo telefono
 let applied = null;       // nome di chi ha appena inviato la candidatura
 let lastRoute = '';
+let points = monthPoints(null);   // punti del mese: { month, points, coffeesUsed, log }
+let seatPhase = '';       // posto occupato: 'on' durante il tempo, 'grace' nei minuti di tolleranza
 
-const ALL_DISHES = [...MENU.daily, ...Object.values(MENU.seasonal).flat(), ...MENU.glutenFree];
+// Voci dello storico dei punti → testo da mostrare.
+const LOG_KEYS = { till: 'logTill', takeaway: 'logTakeaway', ontime: 'logOnTime', demo: 'logDemo' };
+
+const allDishes = () => [...MENU.daily, ...Object.values(MENU.seasonal).flat(), ...MENU.glutenFree];
 
 /* ---------- Piccoli aiuti ---------- */
 
@@ -209,19 +320,25 @@ const locale = () => (lang === 'nl' ? 'nl-NL' : 'en-IE');
 const money = cents => new Intl.NumberFormat(locale(), { style: 'currency', currency: 'EUR' }).format(cents / 100);
 const price = dish => money(Math.round(dish.price * 100));
 const num = n => n.toLocaleString(locale());
-const icon = (name, cls = '') => `<svg class="ic ${cls}" aria-hidden="true"><use href="#i-${name}"/></svg>`;
+const pct = rate => Math.round(rate * 100);
+const icon = (name, cls = '') => `<svg class="ic ${cls}" aria-hidden="true"><use href="icons.svg#i-${name}"/></svg>`;
 const canteenOf = id => CANTEENS.find(c => c.id === id) || CANTEENS[0];
-const dishOf = id => ALL_DISHES.find(d => d.id === id);
+const dishOf = id => allDishes().find(d => d.id === id);
 const street = c => c.address.split(',')[0];
 const localDate = () => new Date().toLocaleDateString('sv-SE');   // AAAA-MM-GG nell'ora locale
-const discountAvailable = () => store.get('discountUsedOn', '') !== localDate();
+const isSoldOut = d => soldOut(d, localDate());
+const dailyAvailable = () => store.get('discountUsedOn', '') !== localDate();
+const longDate = date => new Intl.DateTimeFormat(locale(), { day: 'numeric', month: 'long' }).format(date);
+const monthName = () => new Intl.DateTimeFormat(locale(), { month: 'long' }).format(new Date());
 // Nome del giorno (0 = domenica ... 6 = sabato) nella lingua corrente. Il 1° gennaio 2024 era un lunedì.
 const weekday = (day, style = 'long') => new Intl.DateTimeFormat(lang, { weekday: style }).format(new Date(2024, 0, day || 7));
 const mmss = ms => {
   const s = Math.max(0, Math.ceil(ms / 1000));
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 };
-const seatTimeLeft = () => booking.checkedInAt + booking.minutes * 60000 - Date.now();
+const seatEnd = () => booking.checkedInAt + booking.minutes * 60000;
+const seatTimeLeft = () => seatEnd() - Date.now();
+const graceMs = () => REWARDS.graceMinutes * 60000;
 const currentRoute = () => location.hash.slice(1) || 'home';
 // Va a una schermata; se ci siamo già, la ridisegna.
 function show(route) {
@@ -249,8 +366,65 @@ function closeSheet() {
 function dishTags(d) {
   const diet = d.diet === 'vegan' ? `<span class="tag green">${icon('leaf')}${t('vegan')}</span>`
     : d.diet === 'veg' ? `<span class="tag green">${t('vegetarian')}</span>` : '';
-  return diet + (d.gf ? `<span class="tag blue">${t('glutenFree')}</span>` : '');
+  return diet + (d.gf ? `<span class="tag blue">${t('glutenFree')}</span>` : '')
+    + (isSoldOut(d) ? `<span class="tag red">${t('soldOut')}</span>` : '');
 }
+
+// Miniatura della foto di un piatto (se la foto non si carica, sparisce senza lasciare buchi).
+function thumb(d, cls = 'thumb') {
+  const ph = photoOf(d);
+  return ph ? `<img class="${cls}" src="${esc(thumbOf(ph.src))}" alt="" loading="lazy" onerror="this.remove()">` : '';
+}
+
+/* ---------- Punti: guadagnarli e mostrarli ---------- */
+
+// Punti del mese aggiornati: se nel frattempo è cominciato un mese nuovo, si riparte da zero.
+function myPoints() {
+  const fresh = monthPoints(points);
+  if (fresh !== points) { points = fresh; store.set('points', points); }
+  return points;
+}
+
+// Aggiunge punti allo storico del mese. Restituisce quanti punti sono stati aggiunti.
+function earn(amount, kind, canteen = '') {
+  if (amount <= 0) return 0;
+  const p = myPoints();
+  p.points += amount;
+  p.log.unshift({ at: Date.now(), kind, canteen, points: amount });
+  p.log = p.log.slice(0, 30);
+  store.set('points', p);
+  return amount;
+}
+
+// Registra un pasto pagato: punti guadagnati e, se usato, lo sconto studenti del giorno.
+function payMeal(cents, usedDaily, kind, canteen) {
+  if (usedDaily) store.set('discountUsedOn', localDate());
+  return earn(mealPoints(cents), kind, canteen);
+}
+
+// Riga dello sconto nel conto: quello del mese oppure quello studenti del giorno.
+const discountLabel = (gold, rate) => t(gold ? 'goldDiscountLine' : 'studentDiscount', { pct: pct(rate) });
+
+// Barra dei punti con le tappe: un caffè ogni REWARDS.coffeeEvery punti, lo sconto del mese alla fine.
+function pointsBar(r) {
+  const max = REWARDS.goldAt;
+  const marks = [];
+  // Le tappe troppo vicine alla fine (meno del 12% della barra) si sovrapporrebbero alla stella: non si disegnano.
+  for (let p = REWARDS.coffeeEvery; p <= max * 0.88 && marks.length < 7; p += REWARDS.coffeeEvery) marks.push(p);
+  // ponytail: con tante tappe la barra diventa illeggibile; oltre 6 caffè mostriamo solo l'inizio e la fine.
+  const showMarks = marks.length <= 6;
+  const pos = p => `${(p / max) * 100}%`;
+  const mark = (p, ic, cls) => `<span class="mark ${cls} ${r.points >= p ? 'on' : ''}" style="left:${pos(p)}">${icon(ic)}</span>`;
+  return `
+    <div class="pbar" role="img" aria-label="${t('pointsOf', { n: num(r.points), max: num(max) })}">
+      <span class="bar"><i style="width:${Math.min(100, (r.points / max) * 100)}%"></i></span>
+      ${showMarks ? marks.map(p => mark(p, 'coffee', '')).join('') : ''}
+      ${mark(max, 'star', 'gold')}
+    </div>
+    <div class="plabels" aria-hidden="true">${(showMarks ? marks : [0]).concat(max).map(p => `<span style="left:${pos(p)}">${num(p)}</span>`).join('')}</div>`;
+}
+
+const coffeesText = n => (n === 1 ? t('coffeeReady1') : n ? t('coffeesReady', { n }) : t('noCoffee'));
 
 /* ---------- Schermate ----------
    Ogni schermata restituisce { title, sub, back, tab, body, after } e viene disegnata da render(). */
@@ -259,12 +433,14 @@ function dishTags(d) {
 function statusCards() {
   let html = '';
   if (booking) {
-    const c = canteenOf(booking.canteen);
+    const c = canteenOf(booking.canteen), left = booking.checkedInAt ? seatTimeLeft() : 0;
+    const state = !booking.checkedInAt ? t('scanToCheckIn')
+      : left > 0 ? `${t('timeLeft')} <b data-countdown>${mmss(left)}</b>` : `<b>${t('checkOutNow')}</b>`;
     html += `
       <a class="card status" href="#book/${c.id}">
         <span class="status-ic">${icon('armchair')}</span>
         <span class="grow"><strong>${t('yourSeat')}: ${t('tableSeat', booking)}</strong>
-          <span class="muted">${c.name} · ${booking.checkedInAt ? `${t('timeLeft')} <b data-countdown>${mmss(seatTimeLeft())}</b>` : t('scanToCheckIn')}</span></span>
+          <span class="muted">${c.name} · ${state}</span></span>
         ${icon('chevron-right')}
       </a>`;
   }
@@ -283,13 +459,17 @@ function statusCards() {
 
 function home() {
   const day = new Date().getDay(), isOpen = day >= 1 && day <= 5;
+  const r = rewardStatus(myPoints());
+  const today = MENU.seasonal[isOpen ? day : 1];
   return {
     title: 'Canteen Maastricht', sub: t('hello', { name: STUDENT.name.split(' ')[0] }), tab: 'home',
     body: `
       ${statusCards()}
       <a class="card status" href="#qr">
         <span class="status-ic navy">${icon('qr')}</span>
-        <span class="grow"><strong>${t('myQr')}</strong><span class="muted">${t('qrStripText')}</span></span>
+        <span class="grow"><strong>${t('myCard')}</strong>
+          <span class="muted">${t('pointsLine', { n: num(r.points) })} · ${r.gold ? t('goldShort', { pct: pct(REWARDS.goldDiscount) }) : coffeesText(r.coffeesLeft)}</span>
+          <span class="bar mini"><i style="width:${Math.min(100, (r.points / REWARDS.goldAt) * 100)}%"></i></span></span>
         ${icon('chevron-right')}
       </a>
 
@@ -309,20 +489,25 @@ function home() {
 
       <h2>${t('weekMenu')}</h2>
       <a class="card teaser" href="#menu">
+        <span class="thumbs">${today.slice(0, 3).map(d => thumb(d)).join('')}</span>
         <span class="muted"><span class="cap">${isOpen ? t('today') : weekday(1)}</span> · ${t('sameEverywhere')}</span>
-        ${MENU.seasonal[isOpen ? day : 1].map(d => `<span class="special"><strong>${esc(L(d.name))}</strong>${dishTags(d)}</span>`).join('')}
+        ${today.map(d => `<span class="special"><strong>${esc(L(d.name))}</strong>${dishTags(d)}</span>`).join('')}
         <span class="more">${t('seeMenu')}${icon('chevron-right')}</span>
       </a>
 
       <h2>${t('howTitle')}</h2>
       <ol class="card steps"><li>${t('how1')}</li><li>${t('how2')}</li><li>${t('how3')}</li></ol>
+      <button class="btn ghost" onclick="openTour()">${icon('info')}${t('tourAgain')}</button>
 
       <div class="row2">
         <a class="card teaser" href="#dinner">${icon('calendar', 'accent')}<strong>${t('dinnerTitle')}</strong><span class="muted">${t('dinnerTeaser')}</span></a>
         <a class="card teaser" href="#jobs">${icon('briefcase', 'accent')}<strong>${t('jobsTitle')}</strong><span class="muted">${t('jobsTeaser')}</span></a>
       </div>
 
-      <p class="hint center">${t('unofficial')}</p>`,
+      <footer class="footer">
+        <p class="hint center">${t('unofficial')}</p>
+        <a class="link" href="staff.html">${icon('sliders')}${t('staffLink')}</a>
+      </footer>`,
   };
 }
 
@@ -352,7 +537,7 @@ function canteen(id) {
         <button class="link" onclick="openMaps('${c.id}')">${icon('map-pin')}${esc(c.address)}</button>
         <p class="line">${icon('clock')}${t('lunchHours', LUNCH)}</p>
         <p class="line">${icon('users')}${t('seatsOf', { n: num(free), total: num(c.seats) })}</p>
-        <div class="bar"><i style="width:${Math.round(100 * (1 - free / c.seats))}%"></i></div>
+        <span class="bar"><i style="width:${Math.round(100 * (1 - free / c.seats))}%"></i></span>
       </section>
 
       <h2>${t('whatToDo')}</h2>
@@ -393,6 +578,7 @@ function book(id) {
           <div class="seg">${[15, 20, 30].map(m => `<label><input type="radio" name="minutes" value="${m}" ${m === MAX_SEAT_MINUTES ? 'checked' : ''}><span>${m} min</span></label>`).join('')}</div>
         </fieldset>
         <p class="hint">${t('max30')}</p>
+        <p class="notice">${icon('star')}<span>${t('onTimeHint', { n: REWARDS.onTime })}</span></p>
         <button class="btn" type="submit">${t('confirmBooking')}</button>
       </form>
       <ol class="card steps"><li>${t('bookStep1')}</li><li>${t('bookStep2')}</li><li>${t('bookStep3')}</li></ol>`,
@@ -415,23 +601,24 @@ function confirmBooking(event, id) {
   render();
 }
 
-// Biglietto della prenotazione: prima della scansione mostra i passi da fare, dopo mostra il tempo che resta.
+// Biglietto della prenotazione: prima della scansione i passi da fare, poi il tempo che resta,
+// infine i minuti di tolleranza per lasciare il posto e prendere comunque i punti in più.
 function bookingTicket() {
   const c = canteenOf(booking.canteen);
   const where = `<p class="seat">${t('tableSeat', booking)}</p><p class="muted">${c.name} · ${esc(booking.time)} · ${booking.minutes} min</p>`;
   if (booking.checkedInAt) {
-    const left = seatTimeLeft();
+    const left = seatTimeLeft(), over = left <= 0;
     return {
       title: t('yourSeat'), back: '#home', tab: 'home',
       body: `
         <section class="card center">
-          <p class="badge green">${icon('check')}${t('checkedIn')}</p>
-          <p class="muted">${t('timeLeft')}</p>
-          <p class="timer" data-countdown>${mmss(left)}</p>
-          <div class="bar"><i data-countbar style="width:${Math.max(0, Math.round(100 * left / (booking.minutes * 60000)))}%"></i></div>
+          ${over ? `<p class="badge warn">${icon('clock')}${t('timeUpTitle')}</p>` : `<p class="badge green">${icon('check')}${t('checkedIn')}</p>`}
+          <p class="muted">${over ? t('graceLeft') : t('timeLeft')}</p>
+          <p class="timer" data-countdown>${mmss(over ? left + graceMs() : left)}</p>
+          ${over ? '' : `<span class="bar"><i data-countbar style="width:${Math.max(0, Math.round(100 * left / (booking.minutes * 60000)))}%"></i></span>`}
           ${where}
-          <p class="hint">${t('autoRelease')}</p>
-          <button class="btn ghost" onclick="endBooking('seatLeft')">${t('leaveSeat')}</button>
+          <p class="hint">${over ? t('graceText', { n: REWARDS.onTime }) : t('onTimeHint', { n: REWARDS.onTime })}</p>
+          <button class="btn" onclick="checkOut()">${icon('check')}${t('checkOut')}</button>
         </section>`,
     };
   }
@@ -441,7 +628,7 @@ function bookingTicket() {
       <section class="card center">
         <p class="badge green">${icon('check')}${t('seatBooked')}</p>
         ${where}
-        <ol class="steps"><li>${t('ticket1')}</li><li>${t('ticket2', booking)}</li></ol>
+        <ol class="steps"><li>${t('ticket1')}</li><li>${t('ticket2', booking)}</li><li>${t('ticket3', { n: REWARDS.onTime })}</li></ol>
         <a class="btn" href="#scan">${icon('camera')}${t('scanTable')}</a>
         <a class="btn ghost" href="#qr">${icon('qr')}${t('showQr')}</a>
         <button class="btn text" onclick="endBooking('bookingCancelled')">${t('cancelBooking')}</button>
@@ -450,13 +637,21 @@ function bookingTicket() {
 }
 
 // Chiude la prenotazione: annullata, posto lasciato oppure tempo scaduto.
-function endBooking(messageKey) {
+function endBooking(messageKey, vars = {}) {
   booking = null;
+  seatPhase = '';
   store.set('booking', null);
-  toast(t(messageKey));
+  toast(t(messageKey, vars));
   const name = currentRoute().split('/')[0];
   if (name === 'book' || name === 'scan') show('home');
   else if (name === 'home') render();
+}
+
+// Lascia il posto: se è entro il tempo (più la tolleranza) arrivano i punti in più.
+function checkOut() {
+  if (!booking || !booking.checkedInAt) return;
+  const got = earn(onTimePoints(Date.now(), seatEnd()), 'ontime', booking.canteen);
+  endBooking(got ? 'leftOnTime' : 'seatLeft', { n: got });
 }
 
 /* --- Scansione del QR sul tavolo --- */
@@ -516,12 +711,16 @@ function checkIn() {
 
 /* --- Asporto: scelta dei piatti, pagamento in app, ritiro --- */
 
+const cartLines = () => Object.entries(cart).map(([id, qty]) => ({ ...dishOf(id), qty })).filter(l => l.id);
+
 function takeaway(id) {
   if (order) return orderTicket();
   const c = canteenOf(id), day = new Date().getDay();
-  const lines = Object.entries(cart).map(([dishId, qty]) => ({ ...dishOf(dishId), qty }));
+  const lines = cartLines();
   const count = lines.reduce((sum, l) => sum + l.qty, 0);
-  const totals = orderTotal(lines, discountAvailable());
+  const r = rewardStatus(myPoints()), daily = dailyAvailable();
+  const rate = discountRate(r.gold, daily);
+  const totals = orderTotal(lines, rate);
 
   if (paying && count) {
     return {
@@ -532,10 +731,10 @@ function takeaway(id) {
           <table class="bill">
             ${lines.map(l => `<tr><td>${l.qty} × ${esc(L(l.name))}</td><td>${money(Math.round(l.price * 100) * l.qty)}</td></tr>`).join('')}
             <tr class="sep"><td>${t('subtotal')}</td><td>${money(totals.subtotal)}</td></tr>
-            ${totals.discount
-              ? `<tr class="good"><td>${t('studentDiscount', { pct: Math.round(DISCOUNT * 100) })}</td><td>−${money(totals.discount)}</td></tr>`
-              : `<tr><td colspan="2" class="muted">${t('discountUsed')}</td></tr>`}
+            ${totals.discount ? `<tr class="good"><td>${discountLabel(r.gold, rate)}</td><td>−${money(totals.discount)}</td></tr>`
+              : !daily && !r.gold ? `<tr><td colspan="2" class="muted">${t('discountUsed')}</td></tr>` : ''}
             <tr class="total"><td>${t('total')}</td><td>${money(totals.total)}</td></tr>
+            <tr class="good"><td>${t('youEarn')}</td><td>+${mealPoints(totals.total)}</td></tr>
           </table>
           <label for="pk-time">${t('pickupTime')}</label>
           <input id="pk-time" name="time" type="time" required min="${LUNCH.open}" max="${LUNCH.close}" value="${defaultTime()}">
@@ -551,18 +750,19 @@ function takeaway(id) {
     <h2>${title}</h2>${note}
     <div class="card list">${dishes.map(d => `
       <div class="pick">
+        ${thumb(d)}
         <span class="grow"><strong>${esc(L(d.name))}</strong><span class="muted">${price(d)} · ${d.n[0]} kcal</span><span class="tags">${dishTags(d)}</span></span>
-        <span class="stepper">
+        ${isSoldOut(d) ? '' : `<span class="stepper">
           ${cart[d.id] ? `<button onclick="addToCart('${d.id}', -1)" aria-label="${t('remove')}: ${esc(L(d.name))}">${icon('minus')}</button><b>${cart[d.id]}</b>` : ''}
           <button onclick="addToCart('${d.id}', 1)" aria-label="${t('add')}: ${esc(L(d.name))}">${icon('plus')}</button>
-        </span>
+        </span>`}
       </div>`).join('')}</div>`;
 
   return {
     title: t('takeaway'), sub: `${c.name} · ${t('inBox')}`, back: `#canteen/${c.id}`, tab: 'home',
     body: `
       <p class="notice">${icon('package')}<span>${t('takeawayIntro')}</span></p>
-      ${MENU.seasonal[day] ? section(`${t('seasonal')} · ${t('today')}`, MENU.seasonal[day]) : ''}
+      ${MENU.seasonal[day] && MENU.seasonal[day].length ? section(`${t('seasonal')} · ${t('today')}`, MENU.seasonal[day]) : ''}
       ${section(t('everyDay'), MENU.daily)}
       ${section(t('gfCorner'), MENU.glutenFree, `<p class="hint">${t('gfNote')}</p>`)}
       ${count ? `
@@ -574,6 +774,8 @@ function takeaway(id) {
 }
 
 function addToCart(id, delta) {
+  const d = dishOf(id);
+  if (!d || (delta > 0 && isSoldOut(d))) return;
   cart[id] = Math.min(9, Math.max(0, (cart[id] || 0) + delta));
   if (!cart[id]) delete cart[id];
   render();
@@ -588,19 +790,19 @@ function setPaying(on) {
 // Pagamento dimostrativo: non raccoglie carte né dati bancari, registra solo l'ordine sul telefono.
 function payOrder(event, id) {
   event.preventDefault();
-  const lines = Object.entries(cart).map(([dishId, qty]) => ({ ...dishOf(dishId), qty }));
+  const lines = cartLines();
   if (!lines.length) return;
-  const useDiscount = discountAvailable(), totals = orderTotal(lines, useDiscount);
+  const c = canteenOf(id), r = rewardStatus(myPoints()), rate = discountRate(r.gold, dailyAvailable());
+  const totals = orderTotal(lines, rate);
+  const got = payMeal(totals.total, !r.gold && rate > 0, 'takeaway', c.id);
   order = {
-    canteen: canteenOf(id).id,
+    canteen: c.id,
     code: 'A-' + (100 + Math.floor(Math.random() * 900)),
     time: String(new FormData(event.target).get('time')).slice(0, 5),
     lines: lines.map(l => ({ id: l.id, qty: l.qty })),
-    discount: totals.discount,
-    total: totals.total,
+    discount: totals.discount, gold: r.gold, rate, total: totals.total, points: got,
   };
   store.set('order', order);
-  if (useDiscount) store.set('discountUsedOn', localDate());   // lo sconto vale una volta al giorno
   cart = {};
   paying = false;
   toast(t('orderPaid'));
@@ -624,8 +826,9 @@ function orderTicket() {
             const d = dishOf(l.id);
             return d ? `<tr><td>${l.qty} × ${esc(L(d.name))}</td><td>${money(Math.round(d.price * 100) * l.qty)}</td></tr>` : '';
           }).join('')}
-          ${order.discount ? `<tr class="good"><td>${t('studentDiscount', { pct: Math.round(DISCOUNT * 100) })}</td><td>−${money(order.discount)}</td></tr>` : ''}
+          ${order.discount ? `<tr class="good"><td>${discountLabel(order.gold, order.rate)}</td><td>−${money(order.discount)}</td></tr>` : ''}
           <tr class="total"><td>${t('totalPaid')}</td><td>${money(order.total)}</td></tr>
+          ${order.points ? `<tr class="good"><td>${t('pointsEarned')}</td><td>+${order.points}</td></tr>` : ''}
         </table>
         <button class="btn ghost" onclick="pickedUp()">${t('pickedUp')}</button>
       </section>`,
@@ -639,11 +842,12 @@ function pickedUp() {
   show('home');
 }
 
-/* --- Menu della settimana, con allergeni e valori nutrizionali --- */
+/* --- Menu della settimana, con foto, allergeni e valori nutrizionali --- */
 
 function menu() {
   const list = dishes => `<div class="card list">${dishes.map(d => `
     <button class="dish" onclick="openDish('${d.id}')">
+      ${thumb(d)}
       <span class="grow"><strong>${esc(L(d.name))}</strong><span class="muted">${esc(L(d.desc))}</span><span class="tags">${dishTags(d)}</span></span>
       <span class="side"><strong>${price(d)}</strong><span class="muted">${d.n[0]} kcal</span></span>
     </button>`).join('')}</div>`;
@@ -666,10 +870,13 @@ function menu() {
 function setMenuDay(day) { menuDay = day; render(); }
 function setMenuFilter(filter) { menuFilter = filter; render(); }
 
-// Dettaglio di un piatto: allergeni e valori nutrizionali.
+// Dettaglio di un piatto: foto, allergeni e valori nutrizionali.
 function openDish(id) {
   const d = dishOf(id);
+  if (!d) return;
+  const ph = photoOf(d);
   openSheet(`
+    ${ph ? `<img class="photo" src="${esc(ph.src)}" alt="${esc(L(d.name))}" onerror="this.remove()">` : ''}
     <h2>${esc(L(d.name))}</h2>
     <p class="muted">${esc(L(d.desc))}</p>
     <p class="tags">${dishTags(d)}<span class="price">${price(d)}</span></p>
@@ -677,36 +884,113 @@ function openDish(id) {
     ${d.al.length ? `<ul class="chips">${d.al.map(a => `<li>${L(ALLERGENS[a])}</li>`).join('')}</ul>` : `<p class="muted">${t('noAllergens')}</p>`}
     <h3>${t('nutrition')}</h3>
     <table class="nutri">${NUTRIENTS.map((nutrient, i) => `<tr class="${nutrient.sub ? 'sub' : ''}"><th scope="row">${L(nutrient)}</th><td>${num(d.n[i])} ${nutrient.unit}</td></tr>`).join('')}</table>
-    <p class="hint">${t('traces')}</p>`);
+    <p class="hint">${t('traces')}</p>
+    ${ph && ph.by ? `<p class="credit">${t('photoCredit', { by: ph.by, license: ph.license })} · <a href="${esc(ph.page)}" target="_blank" rel="noopener">Wikimedia Commons</a></p>` : ''}`);
 }
 
-/* --- QR personale: cambia ogni 3 secondi --- */
+/* --- La mia tessera: QR personale (cambia ogni 3 secondi), sconti, punti e premi --- */
 
 function qr() {
-  const now = Date.now(), available = discountAvailable();
+  const now = Date.now(), p = myPoints(), r = rewardStatus(p), daily = dailyAvailable();
+  const lastDay = new Date(resetDate().getTime() - 86400000);
   return {
-    title: t('myQr'), tab: 'qr',
+    title: t('myCard'), tab: 'qr',
     body: `
       <section class="card center">
         <div id="qr-box" class="qr" data-step="${Math.floor(now / QR_PERIOD_MS)}">${qrSvg(qrToken(STUDENT.id, now))}</div>
-        <div class="bar thin"><i class="qr-bar" style="animation-delay:-${now % QR_PERIOD_MS}ms"></i></div>
+        <span class="bar thin"><i class="qr-bar" style="animation-delay:-${now % QR_PERIOD_MS}ms"></i></span>
         <p class="muted">${t('qrRefresh')}</p>
         <strong class="big">${esc(STUDENT.name)}</strong>
         <p class="muted">${t('studentNo')} ${esc(STUDENT.id)}</p>
       </section>
+
       <section class="card canteen">
-        <p class="line spread"><strong>${t('studentDiscount', { pct: Math.round(DISCOUNT * 100) })}</strong><span class="badge ${available ? 'green' : 'grey'}">${available ? t('availableToday') : t('usedToday')}</span></p>
-        <p class="muted">${t('qrExplain')}</p>
-        ${available
-          ? `<button class="btn ghost" onclick="setDiscountUsed(true)">${t('simulateTill')}</button>`
-          : `<button class="btn text" onclick="setDiscountUsed(false)">${t('resetDemo')}</button>`}
+        ${r.gold
+          ? `<p class="line spread"><strong>${t('goldTitle', { pct: pct(REWARDS.goldDiscount) })}</strong><span class="badge green">${t('activeUntil', { date: longDate(lastDay) })}</span></p>`
+          : `<p class="line spread"><strong>${t('studentDiscount', { pct: pct(REWARDS.dailyDiscount) })}</strong><span class="badge ${daily ? 'green' : 'grey'}">${daily ? t('availableToday') : t('usedToday')}</span></p>`}
+        <p class="muted">${r.gold ? t('goldText') : t('qrExplain')}</p>
+      </section>
+
+      <h2>${t('pointsTitle', { month: monthName() })}</h2>
+      <section class="card">
+        <p class="pts"><b>${num(r.points)}</b> ${t('points')}</p>
+        ${pointsBar(r)}
+        <p class="hint">${r.gold ? t('goldReached', { pct: pct(REWARDS.goldDiscount) }) : t('toGold', { n: num(r.toGold), pct: pct(REWARDS.goldDiscount) })}</p>
+      </section>
+
+      <section class="card status">
+        <span class="status-ic">${icon('coffee')}</span>
+        <span class="grow"><strong>${coffeesText(r.coffeesLeft)}</strong><span class="muted">${t('nextCoffee', { n: num(r.toCoffee) })}</span></span>
+        ${r.coffeesLeft ? `<button class="btn small" onclick="openCoffee()">${t('useCoffee')}</button>` : ''}
+      </section>
+
+      <section class="card">
+        <strong>${t('howEarn')}</strong>
+        <ul class="earn">
+          <li>${icon('utensils')}<span>${t('earnMeal', { n: REWARDS.perEuro })}</span></li>
+          <li>${icon('clock')}<span>${t('earnOnTime', { n: REWARDS.onTime })}</span></li>
+          <li>${icon('coffee')}<span>${t('earnCoffee', { n: num(REWARDS.coffeeEvery) })}</span></li>
+          <li>${icon('star')}<span>${t('earnGold', { n: num(REWARDS.goldAt), pct: pct(REWARDS.goldDiscount) })}</span></li>
+        </ul>
+        <p class="hint">${t('resetOn', { date: longDate(resetDate()) })}</p>
+      </section>
+
+      ${p.log.length ? `
+        <h2>${t('thisMonth')}</h2>
+        <ul class="card list">${p.log.map(e => `
+          <li><span class="grow"><span>${t(LOG_KEYS[e.kind], { canteen: e.canteen ? canteenOf(e.canteen).name : '' })}</span>
+            <span class="hint">${longDate(new Date(e.at))}</span></span><b class="plus">+${num(e.points)}</b></li>`).join('')}</ul>` : ''}
+
+      <section class="demo">
+        <p class="muted">${t('demoCard')}</p>
+        <button class="btn ghost" onclick="simulateTill()">${t('simulateTill')}</button>
+        <button class="btn ghost" onclick="demoPoints()">${t('demoPlus', { n: 100 })}</button>
+        <button class="btn text" onclick="resetCard()">${t('resetDemo')}</button>
       </section>`,
   };
 }
 
-function setDiscountUsed(used) {
-  store.set('discountUsedOn', used ? localDate() : '');
-  if (used) toast(t('discountApplied'));
+// Demo: pranzo pagato alla cassa con il QR personale (prezzo di esempio: il piatto principale di oggi).
+function simulateTill() {
+  const dish = (MENU.seasonal[new Date().getDay()] || MENU.seasonal[1]).find(d => d.cat === 'main');
+  const r = rewardStatus(myPoints()), rate = discountRate(r.gold, dailyAvailable());
+  const { total } = orderTotal([{ price: dish ? dish.price : 6, qty: 1 }], rate);
+  const got = payMeal(total, !r.gold && rate > 0, 'till', booking ? booking.canteen : '');
+  toast(t('paidPoints', { total: money(total), n: got }));
+  render();
+}
+
+function demoPoints() {
+  earn(100, 'demo');
+  toast(t('demoAdded', { n: 100 }));
+  render();
+}
+
+function resetCard() {
+  points = monthPoints(null);
+  store.set('points', points);
+  store.set('discountUsedOn', '');
+  render();
+}
+
+// Caffè gratis: si mostra un QR alla cassa. Il caffè si "consuma" quando la cassa lo scansiona.
+function openCoffee() {
+  const p = myPoints();
+  if (!rewardStatus(p).coffeesLeft) return;
+  openSheet(`
+    <h2>${t('freeCoffee')}</h2>
+    <p class="muted">${t('coffeeText')}</p>
+    <div class="qr small mid">${qrSvg(`MM1.COFFEE.${STUDENT.id}.${p.month}.${p.coffeesUsed + 1}`)}</div>
+    <button class="btn" onclick="useCoffee()">${t('simulateCoffee')}</button>`);
+}
+
+function useCoffee() {
+  const p = myPoints();
+  if (!rewardStatus(p).coffeesLeft) return;
+  p.coffeesUsed += 1;
+  store.set('points', p);
+  closeSheet();
+  toast(t('coffeeEnjoy'));
   render();
 }
 
@@ -739,8 +1023,8 @@ function dinner() {
     main = `
       <section class="card center">
         <p class="muted">${t('themeLabel')}</p>
-        <p class="seat">${L(DINNER.theme)}</p>
-        <p>${L(DINNER.themeDesc)}</p>
+        <p class="seat">${esc(L(DINNER.theme))}</p>
+        <p>${esc(L(DINNER.themeDesc))}</p>
         <p class="line center">${icon('clock')}<span><span class="cap">${weekday(3)}</span> ${DINNER.time} · ${canteenOf(DINNER.canteen).name}</span></p>
       </section>
       <p class="notice">${icon('info')}<span>${t('announcedText')}</span></p>`;
@@ -820,6 +1104,84 @@ function submitApplication(event) {
   document.getElementById('applied').scrollIntoView({ block: 'center' });
 }
 
+/* ---------- Tutorial a schede: si apre al primo avvio, poi dalla home ---------- */
+
+const TOUR = [
+  ['home', 'tour1T', 'tour1'], ['map-pin', 'tour2T', 'tour2'], ['armchair', 'tour3T', 'tour3'],
+  ['package', 'tour4T', 'tour4'], ['utensils', 'tour5T', 'tour5'], ['qr', 'tour6T', 'tour6'],
+  ['star', 'tour7T', 'tour7'], ['calendar', 'tour8T', 'tour8'], ['globe', 'tour9T', 'tour9'],
+];
+
+function openTour(start = 0) {
+  const tour = document.getElementById('tour');
+  const vars = {
+    max: MAX_SEAT_MINUTES, daily: pct(REWARDS.dailyDiscount), perEuro: REWARDS.perEuro, onTime: REWARDS.onTime,
+    coffee: num(REWARDS.coffeeEvery), gold: num(REWARDS.goldAt), goldPct: pct(REWARDS.goldDiscount),
+  };
+  tour.innerHTML = `
+    <div class="tour-top">
+      <div class="lang" role="group" aria-label="Language / Taal">
+        ${['en', 'nl'].map(code => `<button class="${code === lang ? 'on' : ''}" aria-pressed="${code === lang}" onclick="setTourLang('${code}')">${code.toUpperCase()}</button>`).join('')}
+      </div>
+    </div>
+    <div class="tour-track" id="tour-track">
+      ${TOUR.map(([ic, title, text], i) => `
+        <section class="tour-slide" aria-label="${i + 1} / ${TOUR.length}">
+          <span class="tour-ic">${icon(ic)}</span>
+          <h2>${t(title)}</h2>
+          <p>${t(text, vars)}</p>
+        </section>`).join('')}
+    </div>
+    <div class="tour-nav">
+      <button class="btn text" onclick="closeTour()">${t('skip')}</button>
+      <span class="dots" aria-hidden="true">${TOUR.map(() => '<i></i>').join('')}</span>
+      <button class="btn small" id="tour-next" onclick="tourNext()"></button>
+    </div>`;
+  if (!tour.open) tour.showModal();
+  const track = document.getElementById('tour-track');
+  tourTarget = null;
+  track.scrollLeft = start * track.clientWidth;
+  track.addEventListener('scroll', updateTour, { passive: true });
+  track.addEventListener('pointerdown', () => { tourTarget = null; });   // il dito ha la precedenza su "Next"
+  updateTour();
+}
+
+// Scheda verso cui "Next" sta scorrendo: così due tocchi rapidi avanzano di due schede, non di una.
+let tourTarget = null;
+
+const tourIndex = () => {
+  if (tourTarget !== null) return tourTarget;
+  const track = document.getElementById('tour-track');
+  return Math.round(track.scrollLeft / track.clientWidth) || 0;
+};
+
+function updateTour() {
+  const track = document.getElementById('tour-track');
+  if (tourTarget !== null && Math.abs(track.scrollLeft - tourTarget * track.clientWidth) < 2) tourTarget = null;
+  const i = tourIndex();
+  document.querySelectorAll('#tour .dots i').forEach((dot, k) => dot.classList.toggle('on', k === i));
+  document.getElementById('tour-next').textContent = t(i === TOUR.length - 1 ? 'start' : 'next');
+}
+
+function tourNext() {
+  const track = document.getElementById('tour-track'), i = tourIndex();
+  if (i >= TOUR.length - 1) return closeTour();
+  tourTarget = i + 1;
+  const smooth = !matchMedia('(prefers-reduced-motion: reduce)').matches;
+  track.scrollTo({ left: tourTarget * track.clientWidth, behavior: smooth ? 'smooth' : 'auto' });
+  updateTour();
+}
+
+function setTourLang(code) {
+  const i = tourIndex();
+  setLang(code);
+  openTour(i);
+}
+
+function closeTour() {
+  document.getElementById('tour').close();   // l'evento "close" segna il tutorial come visto
+}
+
 /* ---------- Disegno della pagina ---------- */
 
 const VIEWS = { home, canteen, book, scan, takeaway, menu, qr, dinner, jobs };
@@ -838,6 +1200,7 @@ function render() {
   const sheet = document.getElementById('sheet');
   if (sheet.open) sheet.close();
   if (name !== 'takeaway') paying = false;
+  seatPhase = booking && booking.checkedInAt ? (seatTimeLeft() > 0 ? 'on' : 'grace') : '';
 
   const view = (Object.hasOwn(VIEWS, name) ? VIEWS[name] : home)(arg);
   document.documentElement.lang = lang;
@@ -871,13 +1234,20 @@ function tick() {
   }
   if (booking && booking.checkedInAt) {
     const left = seatTimeLeft();
-    if (left <= 0) { endBooking('timeUp'); return; }
-    for (const el of document.querySelectorAll('[data-countdown]')) el.textContent = mmss(left);
+    if (left + graceMs() <= 0) { endBooking('timeUpNoPoints', { n: REWARDS.onTime }); return; }
+    const phase = left > 0 ? 'on' : 'grace';
+    if (phase !== seatPhase) {
+      seatPhase = phase;
+      if (['home', 'book'].includes(currentRoute().split('/')[0])) render();
+      return;
+    }
+    for (const el of document.querySelectorAll('[data-countdown]')) el.textContent = mmss(phase === 'on' ? left : left + graceMs());
     for (const el of document.querySelectorAll('[data-countbar]')) el.style.width = `${Math.round(100 * left / (booking.minutes * 60000))}%`;
   }
 }
 
 function boot() {
+  applyStaffData(store.get('staff', null));
   const savedLang = store.get('lang', (navigator.language || '').toLowerCase().startsWith('nl') ? 'nl' : 'en');
   lang = Object.hasOwn(I18N, savedLang) ? savedLang : 'en';
 
@@ -894,9 +1264,15 @@ function boot() {
     order = {
       canteen: o.canteen, code: String(o.code).slice(0, 8), time: String(o.time).slice(0, 5),
       lines: o.lines.filter(l => l && dishOf(l.id) && l.qty > 0).map(l => ({ id: l.id, qty: Math.trunc(l.qty) })),
-      discount: Math.trunc(o.discount) || 0, total: Math.trunc(o.total) || 0,
+      discount: Math.trunc(o.discount) || 0, gold: o.gold === true, rate: Number(o.rate) || 0,
+      total: Math.trunc(o.total) || 0, points: Math.trunc(o.points) || 0,
     };
   }
+  const p = store.get('points', null);
+  points = monthPoints(p && typeof p === 'object' ? {
+    month: String(p.month), points: Math.max(0, Math.trunc(p.points)), coffeesUsed: Math.max(0, Math.trunc(p.coffeesUsed)),
+    log: Array.isArray(p.log) ? p.log.filter(e => e && Object.hasOwn(LOG_KEYS, e.kind) && Number.isFinite(e.points) && Number.isFinite(e.at)).slice(0, 30) : [],
+  } : null);
   const ideas = store.get('ideas', []);
   myIdeas = Array.isArray(ideas) ? ideas.filter(text => typeof text === 'string').map(text => text.slice(0, 140)) : [];
 
@@ -906,9 +1282,12 @@ function boot() {
   // Un tocco fuori dal pannello lo chiude.
   const sheet = document.getElementById('sheet');
   sheet.addEventListener('click', event => { if (event.target === sheet) sheet.close(); });
+  document.getElementById('tour').addEventListener('close', () => store.set('tourDone', true));
   window.addEventListener('hashchange', render);
   setInterval(tick, 250);
   render();
+  if (!store.get('tourDone', false)) openTour();
 }
 
-if (typeof document !== 'undefined') boot();
+// Si avvia solo nella pagina dell'app (il pannello staff usa le stesse funzioni ma ha la sua pagina).
+if (typeof document !== 'undefined' && document.getElementById('view')) boot();
