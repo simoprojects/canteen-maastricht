@@ -1,0 +1,14 @@
+{
+  "expo": {
+    "name": "Canteen Maastricht",
+    "slug": "canteen-maastricht",
+    "web": {
+      "output": "single"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "bd870027-26e9-428b-9164-c6bec599c4d7"
+      }
+    }
+  }
+}
