@@ -7,7 +7,7 @@ const ctx = vm.createContext({ console, TextEncoder });
 for (const file of ['data.js', 'i18n.js', 'app.js']) vm.runInContext(read(file), ctx, { filename: file });
 const names = 'MENU, ALLERGENS, CATEGORIES, CANTEENS, NUTRIENTS, DINNER, JOBS, LUNCH, REWARDS, PHOTOS, I18N, rsRemainder, qrMatrix, qrSvg, qrToken, ' +
   'seatsFree, dinnerPhase, clampMinutes, matchesFilter, orderTotal, seatCode, defaultTime, monthKey, monthPoints, mealPoints, onTimePoints, ' +
-  'rewardStatus, discountRate, resetDate, photoOf, thumbOf, soldOut, dishProblems, menuValid, rewardsValid, applyStaffData';
+  'rewardStatus, discountRate, resetDate, photoOf, thumbOf, soldOut, dishProblems, menuValid, rewardsValid, applyStaffData, missionOf, raceTime';
 const app = vm.runInContext(`({ ${names} })`, ctx);
 const { MENU, ALLERGENS, CATEGORIES, CANTEENS, NUTRIENTS, DINNER, JOBS, LUNCH, REWARDS, PHOTOS, I18N } = app;
 
@@ -77,6 +77,13 @@ const dec = app.monthPoints(nov, new Date(2026, 11, 1, 0, 1));
 assert.ok(dec.month === '2026-12' && dec.points === 0 && dec.coffeesUsed === 0 && dec.log.length === 0, 'mese nuovo: punti e caffè ripartono da zero');
 assert.equal(app.monthPoints({ month: '2026-11', points: 'tanti' }, new Date(2026, 10, 5)).points, 0, 'dati rovinati: si riparte da zero');
 assert.equal(app.resetDate(new Date(2026, 11, 15)).getTime(), new Date(2027, 0, 1).getTime(), 'a dicembre si azzera il 1° gennaio');
+
+/* --- Sfida a tempo --- */
+assert.equal(app.missionOf('book', 'fasos'), 'seat'); assert.equal(app.missionOf('book', 'law'), null, 'solo la FASoS conta');
+assert.equal(app.missionOf('cart', { diet: 'vegan' }), 'vegan'); assert.equal(app.missionOf('cart', { diet: 'veg' }), null, 'vegetariano non basta');
+assert.equal(app.missionOf('lang', 'nl'), 'dutch'); assert.equal(app.missionOf('lang', 'en'), null);
+assert.equal(app.raceTime(47300), '0:47.3'); assert.equal(app.raceTime(125099), '2:05.0'); assert.equal(app.raceTime(-5), '0:00.0');
+assert.ok(new TextEncoder().encode('https://canteen-maastricht.expo.app/?race').length <= 42, 'il link della sfida deve stare nel QR');
 
 /* --- Cena del mercoledì: gio-sab idee, dom decisione, lun-mer tema annunciato --- */
 assert.equal([0, 1, 2, 3, 4, 5, 6].map(app.dinnerPhase).join(),

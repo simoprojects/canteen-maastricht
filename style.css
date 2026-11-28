@@ -272,6 +272,28 @@ input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px soli
 .dots i{width:6px;height:6px;border-radius:3px;background:#C9D3DD;transition:width .2s var(--ease),background-color .2s}
 .dots i.on{width:18px;background:var(--navy)}
 
+/* Sfida a tempo: scheda in basso con cronometro e missioni, schermate di partenza e di arrivo */
+.race-hud{position:absolute;left:12px;right:12px;z-index:4;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:#fff;box-shadow:0 8px 24px rgba(0,28,61,.18)}
+.race-head{display:flex;align-items:center;gap:8px}
+.race-head strong{flex:1;font-size:15px}
+.race-clock{font-size:20px;font-weight:700;font-variant-numeric:tabular-nums}
+.race-x{display:grid;place-items:center;width:34px;height:34px;margin-right:-6px;border-radius:50%;color:var(--muted)}
+.race-x:active{background:#EEF2F6}
+.race-list{display:flex;flex-direction:column;gap:4px;margin-top:6px}
+.race-list li{display:flex;align-items:center;gap:8px;color:var(--ink-2);font-size:14px}
+.race-list .ic{color:var(--field)}
+.race-list li.ok{color:var(--green-ink);font-weight:700}
+.race-list li.ok .ic{color:var(--green)}
+.race-word{width:100%;margin-top:8px}
+body.racing main{padding-bottom:200px}
+.race-in{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:calc(28px + env(safe-area-inset-top,0px)) 24px calc(24px + env(safe-area-inset-bottom,0px));overflow-y:auto;text-align:center}
+.race-in h2{font-size:24px}
+.race-in .lead{max-width:34ch}
+.race-in .btn{max-width:340px}
+.race-steps{align-self:stretch;width:100%;max-width:340px;margin:0 auto}
+.race-big{font-size:64px;font-weight:800;line-height:1;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.secret{padding:10px 22px;border:2px dashed var(--red);border-radius:12px;color:var(--red-press);font-size:34px;font-weight:800;letter-spacing:.12em;user-select:all;-webkit-user-select:all}
+
 /* Pannello staff: pensato per il computer della canteen, funziona anche sul telefono */
 .staff-page{min-height:100vh;min-height:100dvh;max-width:960px;margin:0 auto;background:var(--bg)}
 .staff-page .top{position:sticky;top:0;z-index:2}

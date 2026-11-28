@@ -193,23 +193,24 @@ body.show-notes .notes{display:block}
   <section class="slide" data-photo="salade" aria-label="Slide 5">
     <div class="half"><img class="bg" alt=""><div class="veil full"></div></div>
     <div class="content" style="right:55%">
-      <p class="kicker">Live demo</p>
-      <h2>Try it now</h2>
+      <p class="kicker">Live challenge · leaderboard on Mentimeter</p>
+      <h2>Who's the fastest?</h2>
       <ol class="tasks">
         <li>Book a seat at FASoS</li>
-        <li>Open My card and watch the QR change</li>
-        <li>Find a vegan dish</li>
+        <li>Add a vegan dish to a takeaway order</li>
+        <li>Switch the app to Dutch</li>
       </ol>
+      <p class="lead">Then type the secret word on menti.com. The fastest wins.</p>
     </div>
     <div class="right">
-      <div class="phone"><iframe data-src="index.html" title="Canteen Maastricht, live" tabindex="-1"></iframe></div>
+      <div class="phone"><iframe data-src="index.html?race" title="Canteen Maastricht, live" tabindex="-1"></iframe></div>
       <div class="join">
-        <div class="qr small" data-qr="app"></div>
-        <p class="url">canteen-maastricht.expo.app</p>
+        <div class="qr small" data-qr="race"></div>
+        <span class="pill">Scan, then press Start</span>
       </div>
     </div>
     <p class="credit"></p>
-    <aside class="speaker"><b>3:30 – 5:30</b> · Give everyone a minute to try the three tasks on their own phone. Meanwhile, use the phone on screen: show the short tutorial, book a seat at FASoS, press "Simulate scan" to check in, then open My card. Ask: "Who found a vegan dish?"</aside>
+    <aside class="speaker"><b>3:30 – 5:30</b> · In Mentimeter, open the Quiz question "What's the secret word?" (it has a timer). Say: "Scan the code. When I say go, press Start. Do the three missions, then type the secret word on menti.com." Count down: 3, 2, 1, go! Play along on the phone on screen. When the timer ends, show the Mentimeter leaderboard and congratulate the winner.</aside>
   </section>
 
   <!-- 6 · La tessera e i punti -->
@@ -320,8 +321,10 @@ body.show-notes .notes{display:block}
 //   code:    il codice a 8 cifre che il pubblico inserisce su menti.com
 //   link:    il link per votare (Mentimeter → Share → "Voting link"), finisce nel QR delle slide
 //   results: il link della presentazione su Mentimeter, per aprire i risultati dal vivo
-const MENTI = { code: '', link: '', results: '' };
+// Il link di partecipazione si scrive una volta sola in data.js (CHALLENGE.menti) e vale anche qui.
+const MENTI = { code: '', link: CHALLENGE.menti, results: '' };
 const APP_URL = 'https://canteen-maastricht.expo.app';
+const RACE_URL = APP_URL + '/?race';   // apre l'app in modalità sfida
 
 const slides = [...document.querySelectorAll('.slide')];
 let current = 0;
@@ -336,6 +339,7 @@ for (const s of slides) {
 // Codici QR: l'app, il sondaggio e il QR personale che cambia ogni 3 secondi (slide 6).
 const pollQr = MENTI.link || 'https://www.menti.com';
 document.querySelectorAll('[data-qr="app"]').forEach(el => { el.innerHTML = qrSvg(APP_URL); });
+document.querySelectorAll('[data-qr="race"]').forEach(el => { el.innerHTML = qrSvg(RACE_URL); });
 document.querySelectorAll('[data-qr="poll"]').forEach(el => { el.innerHTML = qrSvg(pollQr); });
 document.querySelectorAll('[data-code]').forEach(el => {
   el.textContent = MENTI.code ? MENTI.code.replace(/\D/g, '').replace(/^(\d{4})(\d+)/, '$1 $2') : '···· ····';

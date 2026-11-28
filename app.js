@@ -208,6 +208,22 @@ const discountRate = (gold, dailyAvailable) => (gold ? REWARDS.goldDiscount : da
 // Primo giorno del mese successivo: è lì che i punti si azzerano.
 const resetDate = (now = new Date()) => new Date(now.getFullYear(), now.getMonth() + 1, 1);
 
+/* ---------- Sfida a tempo ---------- */
+
+// Quale missione completa un'azione dell'utente (null = nessuna).
+function missionOf(kind, value) {
+  if (kind === 'book' && value === 'fasos') return 'seat';             // posto prenotato alla FASoS
+  if (kind === 'cart' && value && value.diet === 'vegan') return 'vegan'; // piatto vegano nell'asporto
+  if (kind === 'lang' && value === 'nl') return 'dutch';                // app passata in olandese
+  return null;
+}
+
+// Tempo della sfida come "m:ss.d" (decimi di secondo), per esempio 47300 ms → "0:47.3".
+function raceTime(ms) {
+  const tenths = Math.max(0, Math.floor(ms / 100));
+  return `${Math.floor(tenths / 600)}:${String(Math.floor(tenths / 10) % 60).padStart(2, '0')}.${tenths % 10}`;
+}
+
 /* ---------- Foto e piatti esauriti ---------- */
 
 // Foto di un piatto: quella scelta dallo staff, altrimenti quella di Wikimedia Commons (se c'è).
@@ -303,6 +319,10 @@ let applied = null;       // nome di chi ha appena inviato la candidatura
 let lastRoute = '';
 let points = monthPoints(null);   // punti del mese: { month, points, coffeesUsed, log }
 let seatPhase = '';       // posto occupato: 'on' durante il tempo, 'grace' nei minuti di tolleranza
+let race = null;          // sfida a tempo: { startedAt, done: { missione: ms dall'avvio }, finishedAt }
+
+// Missioni della sfida → testo da mostrare.
+const MISSION_KEYS = { seat: 'raceSeat', vegan: 'raceVegan', dutch: 'raceDutch' };
 
 // Voci dello storico dei punti → testo da mostrare.
 const LOG_KEYS = { till: 'logTill', takeaway: 'logTakeaway', ontime: 'logOnTime', demo: 'logDemo' };
@@ -599,6 +619,7 @@ function confirmBooking(event, id) {
   store.set('booking', booking);
   toast(t('seatBooked'));
   render();
+  raceEvent('book', c.id);
 }
 
 // Biglietto della prenotazione: prima della scansione i passi da fare, poi il tempo che resta,
@@ -779,6 +800,7 @@ function addToCart(id, delta) {
   cart[id] = Math.min(9, Math.max(0, (cart[id] || 0) + delta));
   if (!cart[id]) delete cart[id];
   render();
+  if (delta > 0) raceEvent('cart', d);
 }
 
 function setPaying(on) {
@@ -1182,6 +1204,107 @@ function closeTour() {
   document.getElementById('tour').close();   // l'evento "close" segna il tutorial come visto
 }
 
+/* ---------- Sfida a tempo: si apre dal QR della presentazione (?race) ---------- */
+
+const raceElapsed = () => (race.finishedAt || Date.now()) - race.startedAt;
+
+function openRaceStart() {
+  const dlg = document.getElementById('race');
+  dlg.innerHTML = `
+    <div class="race-in">
+      <span class="tour-ic">${icon('clock')}</span>
+      <h2>${t('raceTitle')}</h2>
+      <p class="lead">${t('raceIntro')}</p>
+      <ol class="card steps race-steps">${CHALLENGE.missions.map(m => `<li>${t(MISSION_KEYS[m])}</li>`).join('')}</ol>
+      <button class="btn" onclick="startRace()">${t('raceStart')}</button>
+      <p class="hint">${t('raceTip')}</p>
+    </div>`;
+  if (!dlg.open) dlg.showModal();
+}
+
+// Via! Si riparte da zero: niente posto, niente ordine, app in inglese (così la missione in olandese conta).
+function startRace() {
+  booking = null; order = null; cart = {}; paying = false; lang = 'en';
+  store.set('booking', null);
+  store.set('order', null);
+  store.set('lang', 'en');
+  race = { startedAt: Date.now(), done: {}, finishedAt: null };
+  store.set('race', race);
+  document.getElementById('race').close();
+  show('home');
+}
+
+// Un'azione dell'utente: se completa una missione la spunta; con tutte le missioni la sfida finisce.
+function raceEvent(kind, value) {
+  if (!race || !race.startedAt || race.finishedAt) return;
+  const mission = missionOf(kind, value);
+  if (!mission || !CHALLENGE.missions.includes(mission) || race.done[mission]) return;
+  race.done[mission] = Date.now() - race.startedAt;
+  const n = CHALLENGE.missions.filter(m => race.done[m]).length;
+  if (n === CHALLENGE.missions.length) race.finishedAt = Date.now();
+  store.set('race', race);
+  renderRaceHud();
+  if (race.finishedAt) openRaceFinish();
+  else toast(t('raceMissionDone', { n, total: CHALLENGE.missions.length }));
+}
+
+// Schermata finale: tempo, parola segreta e pulsante per scriverla su Mentimeter.
+function openRaceFinish() {
+  const dlg = document.getElementById('race');
+  dlg.innerHTML = `
+    <div class="race-in">
+      <p class="badge green">${icon('check')}${t('raceDone')}</p>
+      <p class="race-big">${raceTime(raceElapsed())}</p>
+      <p class="muted">${t('raceWordLabel')}</p>
+      <p class="secret">${esc(CHALLENGE.word)}</p>
+      <a class="btn" href="${esc(CHALLENGE.menti || 'https://www.menti.com')}" target="_blank" rel="noopener">${t('raceTypeIt')}</a>
+      <button class="btn ghost" onclick="exitRace()">${t('raceExit')}</button>
+      <button class="btn text" onclick="restartRace()">${t('raceAgain')}</button>
+    </div>`;
+  if (!dlg.open) dlg.showModal();
+}
+
+function restartRace() {
+  race = null;
+  store.set('race', null);
+  renderRaceHud();
+  openRaceStart();
+}
+
+// Esce dalla sfida e torna all'app normale (toglie "?race" dall'indirizzo).
+function exitRace() {
+  race = null;
+  store.set('race', null);
+  const dlg = document.getElementById('race');
+  if (dlg.open) dlg.close();
+  history.replaceState(null, '', location.pathname + location.hash);
+  render();
+}
+
+function quitRace() {
+  if (race && (race.finishedAt || confirm(t('raceQuitConfirm')))) exitRace();
+}
+
+// Scheda in basso con il cronometro e le missioni (si spuntano da sole).
+function renderRaceHud() {
+  const hud = document.getElementById('race-hud');
+  const on = !!(race && race.startedAt);
+  document.body.classList.toggle('racing', on);
+  hud.hidden = !on;
+  if (!on) return;
+  const total = CHALLENGE.missions.length, n = CHALLENGE.missions.filter(m => race.done[m]).length;
+  hud.style.bottom = `${document.getElementById('tabs').offsetHeight + 8}px`;
+  hud.innerHTML = `
+    <div class="race-head">
+      <strong>${t('raceHud', { n, total })}</strong>
+      <span class="race-clock" id="race-clock">${raceTime(raceElapsed())}</span>
+      <button class="race-x" onclick="quitRace()" aria-label="${t('raceQuit')}">${icon('x')}</button>
+    </div>
+    ${race.finishedAt
+      ? `<button class="btn small race-word" onclick="openRaceFinish()">${t('raceShowWord')}</button>`
+      : `<ul class="race-list">${CHALLENGE.missions.map(m => `<li class="${race.done[m] ? 'ok' : ''}">${icon(race.done[m] ? 'circle-check' : 'circle')}${t(MISSION_KEYS[m])}</li>`).join('')}</ul>`}`;
+}
+
 /* ---------- Disegno della pagina ---------- */
 
 const VIEWS = { home, canteen, book, scan, takeaway, menu, qr, dinner, jobs };
@@ -1191,6 +1314,7 @@ function setLang(next) {
   lang = next;
   store.set('lang', lang);
   render();
+  raceEvent('lang', next);
 }
 
 function render() {
@@ -1219,11 +1343,14 @@ function render() {
     `<a href="#${id}" class="${view.tab === id ? 'on' : ''}" ${view.tab === id ? 'aria-current="page"' : ''}>${icon(ic)}<span>${t(key)}</span></a>`).join('');
   if (route !== lastRoute) { main.scrollTop = 0; lastRoute = route; }
   if (view.after) view.after();
+  renderRaceHud();
 }
 
 // Aggiornamenti continui: QR personale ogni 3 secondi e conto alla rovescia del posto.
 function tick() {
   const now = Date.now();
+  const clock = document.getElementById('race-clock');
+  if (clock && race && race.startedAt && !race.finishedAt) clock.textContent = raceTime(raceElapsed());
   const box = document.getElementById('qr-box');
   if (box) {
     const step = String(Math.floor(now / QR_PERIOD_MS));
@@ -1284,9 +1411,24 @@ function boot() {
   sheet.addEventListener('click', event => { if (event.target === sheet) sheet.close(); });
   document.getElementById('tour').addEventListener('close', () => store.set('tourDone', true));
   window.addEventListener('hashchange', render);
-  setInterval(tick, 250);
+  setInterval(tick, 100);
+
+  // Sfida a tempo: solo se l'app è stata aperta dal QR della presentazione (indirizzo con "?race").
+  const racing = new URLSearchParams(location.search).has('race');
+  const r = racing ? store.get('race', null) : null;
+  if (r && Number.isFinite(r.startedAt) && r.done && typeof r.done === 'object') {
+    race = {
+      startedAt: r.startedAt, finishedAt: Number(r.finishedAt) || null,
+      done: Object.fromEntries(CHALLENGE.missions.filter(m => Number.isFinite(r.done[m])).map(m => [m, r.done[m]])),
+    };
+  }
+  if (racing && !race) lang = 'en';   // la sfida parte in inglese: una delle missioni è passare all'olandese
   render();
-  if (!store.get('tourDone', false)) openTour();
+  if (racing) {
+    if (!race) openRaceStart(); else if (race.finishedAt) openRaceFinish();
+  } else if (!store.get('tourDone', false)) {
+    openTour();
+  }
 }
 
 // Si avvia solo nella pagina dell'app (il pannello staff usa le stesse funzioni ma ha la sua pagina).

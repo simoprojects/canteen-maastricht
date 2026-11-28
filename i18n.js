@@ -227,6 +227,25 @@ const I18N = {
     tour9T: 'Jobs and languages',
     tour9: 'Looking for a student job? Apply under Jobs. Switch between English and Dutch any time with EN · NL at the top.',
 
+    // Sfida a tempo
+    raceTitle: 'The canteen challenge',
+    raceIntro: 'Complete the 3 missions as fast as you can. At the end you get a secret word: type it on Mentimeter, the fastest climbs the leaderboard.',
+    raceStart: 'Start',
+    raceTip: 'Missions are ticked off automatically. The clock starts when you press Start.',
+    raceSeat: 'Book a seat at FASoS',
+    raceVegan: 'Add a vegan dish to a takeaway order',
+    raceDutch: 'Switch the app to Dutch',
+    raceHud: 'Challenge · {n}/{total}',
+    raceMissionDone: 'Mission complete: {n}/{total}',
+    raceDone: 'Done!',
+    raceWordLabel: 'Your secret word',
+    raceTypeIt: 'Type it on menti.com',
+    raceExit: 'Back to the app',
+    raceAgain: 'Play again',
+    raceQuit: 'Stop the challenge',
+    raceQuitConfirm: 'Stop the challenge? Your time will be lost.',
+    raceShowWord: 'Show the secret word',
+
     // Pannello staff
     stTitle: 'Staff panel',
     stOpenApp: 'Open the app',
@@ -511,6 +530,25 @@ const I18N = {
     tour8: 'Stel van donderdag tot en met zaterdag een thema voor ons speciale diner voor. Op zondag kiest het kantineteam.',
     tour9T: 'Werk en talen',
     tour9: 'Op zoek naar een studentenbaan? Solliciteer bij Werk. Wissel altijd tussen Engels en Nederlands met EN · NL bovenaan.',
+
+    // Sfida a tempo
+    raceTitle: 'De kantine-uitdaging',
+    raceIntro: 'Voltooi de 3 missies zo snel mogelijk. Aan het eind krijg je een geheim woord: typ het op Mentimeter, de snelste stijgt in het klassement.',
+    raceStart: 'Starten',
+    raceTip: 'Missies worden automatisch afgevinkt. De klok start als je op Starten drukt.',
+    raceSeat: 'Reserveer een plek bij FASoS',
+    raceVegan: 'Zet een vegan gerecht in een afhaalbestelling',
+    raceDutch: 'Zet de app in het Nederlands',
+    raceHud: 'Uitdaging · {n}/{total}',
+    raceMissionDone: 'Missie gelukt: {n}/{total}',
+    raceDone: 'Klaar!',
+    raceWordLabel: 'Je geheime woord',
+    raceTypeIt: 'Typ het op menti.com',
+    raceExit: 'Terug naar de app',
+    raceAgain: 'Opnieuw spelen',
+    raceQuit: 'Uitdaging stoppen',
+    raceQuitConfirm: 'De uitdaging stoppen? Je tijd gaat verloren.',
+    raceShowWord: 'Toon het geheime woord',
 
     // Pannello staff
     stTitle: 'Personeelspaneel',

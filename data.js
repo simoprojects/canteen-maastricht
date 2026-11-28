@@ -18,6 +18,15 @@ const REWARDS = {
   goldDiscount: 0.2,    // quanto vale quello sconto (al posto dello sconto giornaliero, non in più)
 };
 
+// Sfida a tempo per la presentazione: il QR della slide apre l'app con "?race".
+// Chi completa le missioni vede la parola segreta e la scrive su Mentimeter (domanda Quiz "Type answer"):
+// Mentimeter dà più punti a chi è più veloce e mostra la classifica.
+const CHALLENGE = {
+  word: 'VLAAI',
+  menti: '',                            // link di partecipazione di Mentimeter (Share); vuoto = menti.com
+  missions: ['seat', 'vegan', 'dutch'], // posto alla FASoS, piatto vegano nell'asporto, app in olandese
+};
+
 const MAX_SEAT_MINUTES = 30;   // tempo massimo al tavolo
 const LUNCH = { open: '11:30', close: '14:30' };   // orario pranzo, lunedì-venerdì
 
