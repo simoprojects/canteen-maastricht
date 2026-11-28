@@ -157,5 +157,9 @@ for (const [, key] of code.matchAll(/\bt\('(\w+)'/g)) assert.ok(I18N.en[key], 't
 /* --- Icone: ogni icona usata esiste in icons.svg --- */
 const svg = read('icons.svg');
 for (const [, name] of code.matchAll(/icon\('([a-z-]+)'/g)) assert.ok(svg.includes(`id="i-${name}"`), 'icona mancante: ' + name);
+const deck = read('presentation.html');
+for (const [, a, b] of deck.matchAll(/icons\.svg#i-([a-z-]+)|\['([a-z-]+)', `/g)) assert.ok(svg.includes(`id="i-${a || b}"`), 'icona mancante nella presentazione: ' + (a || b));
+for (const [, id] of deck.matchAll(/data-photo="([a-z-]+)"/g)) assert.ok(PHOTOS[id], 'foto mancante nella presentazione: ' + id);
+assert.ok(new TextEncoder().encode('https://canteen-maastricht.expo.app').length <= 42, 'il link dell\'app deve stare nel QR');
 
 console.log(`OK — ${all.length} piatti con foto, ${CANTEENS.length} canteen, ${keys.length} testi in 2 lingue, QR, punti, sconti e dati staff verificati.`);

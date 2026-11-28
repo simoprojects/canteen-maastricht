@@ -1,0 +1,422 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#001C3D">
+<meta name="robots" content="noindex">
+<title>Canteen Maastricht · Presentation</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23001C3D'/%3E%3Cpath d='M9 22V10l7 8 7-8v12' fill='none' stroke='%23fff' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<style>
+/* Presentazione "Foto a tutto schermo": foto dei piatti, velo blu scuro, scritte bianche, accento rosso.
+   Le misure in "cqw/cqh" seguono la grandezza della slide, così tutto si adatta a qualsiasi schermo o proiettore. */
+:root{--navy:#001C3D;--red:#DA390F;--sky:#C5E7FF;--sky-2:#7FD0FF;--glass:rgba(0,28,61,.66);--line:rgba(255,255,255,.2)}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;overflow:hidden;background:#000;color:#fff;font-family:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+h1,h2,h3,p,ol,ul{margin:0;padding:0}
+ol,ul{list-style:none}
+a{color:inherit}
+
+.stage{position:absolute;inset:0;margin:auto;width:min(100vw,177.78vh);height:min(100vh,56.25vw);overflow:hidden;background:var(--navy);container-type:size}
+.slide{position:absolute;inset:0;opacity:0;visibility:hidden;transition:opacity .5s ease,visibility .5s}
+.slide.on{opacity:1;visibility:visible}
+.bg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transform:scale(1.06);transition:transform 7s ease-out}
+.slide.on .bg{transform:none}
+.veil{position:absolute;inset:0;background:linear-gradient(90deg,rgba(0,28,61,.92) 0%,rgba(0,28,61,.7) 45%,rgba(0,28,61,.25) 100%)}
+.veil.full{background:rgba(0,28,61,.78)}
+.credit{position:absolute;left:1.2cqw;bottom:1.6cqh;font-size:.8cqw;color:rgba(255,255,255,.6)}
+
+.content{position:absolute;inset:7cqh 5.5cqw 9cqh;display:flex;flex-direction:column;justify-content:flex-end;gap:2.4cqh}
+.content.top{justify-content:flex-start}
+.split{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:4cqw;align-items:end}
+.stack{display:flex;flex-direction:column;gap:2.2cqh}
+.kicker{color:var(--sky-2);font-size:1.25cqw;font-weight:700;letter-spacing:.14em;text-transform:uppercase}
+h1{font-size:7cqw;font-weight:800;line-height:1.02;letter-spacing:-.02em}
+h2{font-size:4.3cqw;font-weight:800;line-height:1.06;letter-spacing:-.015em}
+.lead{max-width:40ch;color:#E8F2FB;font-size:1.85cqw;line-height:1.4}
+.muted{color:var(--sky);font-size:1.3cqw}
+.pill{display:inline-flex;align-items:center;gap:.6cqw;align-self:flex-start;padding:.7cqw 1.5cqw;border-radius:999px;background:var(--red);color:#fff;font-size:1.4cqw;font-weight:700}
+.ic{width:1em;height:1em;flex:none;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+
+/* QR, sondaggi e riquadri */
+.join{display:flex;flex-direction:column;align-items:flex-end;gap:1.6cqh;text-align:right}
+.join .pill{align-self:auto}
+.qr{width:15cqw;aspect-ratio:1;padding:.7cqw;border-radius:1.2cqw;background:#fff}
+.qr.small{width:11cqw}
+.qr svg{display:block;width:100%;height:100%}
+.url{font-size:1.5cqw;font-weight:700}
+.glass{padding:1.8cqw;border:1px solid var(--line);border-radius:1.4cqw;background:var(--glass);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+.poll{display:flex;align-items:center;gap:2cqw}
+.poll .big{font-size:2.6cqw;font-weight:800}
+.code{margin-top:.6cqh;font-size:3.2cqw;font-weight:800;letter-spacing:.08em;font-variant-numeric:tabular-nums}
+.results{display:none;align-self:flex-start;padding:.6cqw 1.2cqw;border:1px solid var(--line);border-radius:999px;font-size:1.1cqw;text-decoration:none}
+.has-results .results{display:inline-block}
+.choices{display:flex;flex-wrap:wrap;gap:.8cqw}
+.choices li{padding:.5cqw 1.2cqw;border:1px solid var(--line);border-radius:999px;background:rgba(255,255,255,.08);font-size:1.35cqw}
+
+.cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1.6cqw}
+.cards li{display:flex;gap:1.2cqw;align-items:flex-start}
+.cards .ic{margin-top:.2cqw;color:var(--red);font-size:2.4cqw}
+.cards b{display:block;font-size:1.75cqw}
+.cards span{color:var(--sky);font-size:1.35cqw;line-height:1.35}
+.list{display:flex;flex-direction:column;gap:1.5cqh}
+.list li{display:flex;align-items:center;gap:1.1cqw;font-size:1.75cqw}
+.list .ic{color:var(--red);font-size:2.1cqw}
+.stats{display:flex;gap:1.4cqw}
+.stats li{flex:1;padding:1.4cqw;border:1px solid var(--line);border-radius:1.2cqw;background:var(--glass)}
+.stats b{display:block;font-size:3.4cqw;font-weight:800;line-height:1}
+.stats span{color:var(--sky);font-size:1.3cqw}
+.steps3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1.4cqw}
+.steps3 li{padding:1.4cqw;border-top:.35cqw solid var(--red);border-radius:0;background:var(--glass)}
+.steps3 b{display:block;font-size:1.9cqw}
+.steps3 span{color:var(--sky);font-size:1.3cqw}
+.tasks{display:flex;flex-direction:column;gap:1.6cqh;counter-reset:task}
+.tasks li{display:flex;align-items:center;gap:1.2cqw;font-size:1.9cqw;counter-increment:task}
+.tasks li::before{content:counter(task);display:grid;place-items:center;flex:none;width:2.8cqw;height:2.8cqw;border-radius:50%;background:var(--red);font-size:1.5cqw;font-weight:800}
+
+/* Barra dei punti, come nell'app */
+.pbar{position:relative;height:.7cqw;margin:2.4cqh 1.4cqw 1cqh;border-radius:999px;background:rgba(255,255,255,.22)}
+.pbar i{display:block;height:100%;border-radius:999px;background:#3BB6F0}
+.mark{position:absolute;top:50%;display:grid;place-items:center;width:2.6cqw;height:2.6cqw;border:2px solid rgba(255,255,255,.55);border-radius:50%;background:var(--navy);font-size:1.3cqw;transform:translate(-50%,-50%)}
+.mark.on{border-color:#3BB6F0;background:#3BB6F0}
+.mark.gold{border-color:var(--red);color:var(--red)}
+
+/* Slide della demo: foto a sinistra, telefono con l'app vera a destra */
+.half{position:absolute;inset:0 50% 0 0;overflow:hidden}
+.right{position:absolute;inset:0 0 0 50%;background:var(--navy)}
+.phone{position:absolute;top:6cqh;bottom:6cqh;left:4.5cqw;aspect-ratio:390/844;overflow:hidden;border:.5cqw solid #fff;border-radius:2.6cqw;background:#fff}
+.phone iframe{display:block;width:390px;height:844px;border:0;transform-origin:0 0}
+.right .join{position:absolute;right:3.5cqw;bottom:9cqh}
+.right .url{font-size:1.15cqw}
+
+/* Comandi per chi presenta: frecce, numero della slide, schermo intero e note */
+.bar{position:absolute;left:0;bottom:0;height:.5cqh;background:var(--red);transition:width .35s ease}
+.nav{position:fixed;right:14px;bottom:12px;z-index:5;display:flex;align-items:center;gap:6px;padding:4px;border-radius:999px;background:rgba(0,0,0,.45);opacity:.35;transition:opacity .2s}
+.nav:hover,.nav:focus-within{opacity:1}
+.nav button{display:grid;place-items:center;min-width:36px;height:36px;padding:0 10px;border:0;border-radius:999px;background:transparent;color:#fff;font:inherit;font-size:14px;font-weight:700;cursor:pointer}
+.nav button:hover{background:rgba(255,255,255,.15)}
+.nav .count{min-width:56px;color:var(--sky);font-size:14px;text-align:center;font-variant-numeric:tabular-nums}
+.speaker{display:none}
+.notes{position:fixed;left:0;right:0;bottom:0;z-index:4;display:none;max-height:38vh;overflow:auto;padding:14px 18px 64px;background:rgba(0,0,0,.88);color:#fff;font-size:17px;line-height:1.5}
+.notes b{color:var(--sky-2)}
+body.show-notes .notes{display:block}
+:focus-visible{outline:3px solid var(--sky-2);outline-offset:2px}
+
+@media (prefers-reduced-motion:reduce){
+  .slide,.bg,.bar{transition:none}
+  .bg{transform:none}
+}
+</style>
+</head>
+<body>
+
+<main class="stage" id="stage">
+
+  <!-- 1 · Apertura -->
+  <section class="slide" data-photo="zuurvlees" aria-label="Slide 1">
+    <img class="bg" alt=""><div class="veil"></div>
+    <div class="content">
+      <div class="split">
+        <div class="stack">
+          <p class="kicker">A student concept for Maastricht University</p>
+          <h1>Your canteen,<br>in your pocket</h1>
+          <p class="lead">Book a seat, order takeaway, pay with your phone and collect points. In English and Dutch.</p>
+        </div>
+        <div class="join">
+          <div class="qr" data-qr="app"></div>
+          <span class="pill">Scan to try it</span>
+          <p class="url">canteen-maastricht.expo.app</p>
+        </div>
+      </div>
+    </div>
+    <p class="credit"></p>
+    <aside class="speaker"><b>0:00 – 0:40</b> · Hi everyone. Quick question: how many of you have walked around a canteen with a full tray, looking for a free seat? (wait for hands) This is Canteen Maastricht, an app for the three university canteens. Scan the code now: you can try the real app during the talk.</aside>
+  </section>
+
+  <!-- 2 · Sondaggio 1 -->
+  <section class="slide" data-photo="friet" aria-label="Slide 2">
+    <img class="bg" alt=""><div class="veil full"></div>
+    <div class="content">
+      <div class="split">
+        <div class="stack">
+          <p class="kicker">Live poll · 1 of 3</p>
+          <h2>How long do you wait for a seat at lunch?</h2>
+          <ul class="choices"><li>Less than 5 min</li><li>5–10 min</li><li>10–20 min</li><li>More than 20 min</li></ul>
+          <a class="results" target="_blank" rel="noopener">Show live results ↗</a>
+        </div>
+        <div class="glass poll">
+          <div class="qr small" data-qr="poll"></div>
+          <div><p class="muted">Go to</p><p class="big">menti.com</p><p class="muted">and enter the code</p><p class="code" data-code></p></div>
+        </div>
+      </div>
+    </div>
+    <p class="credit"></p>
+    <aside class="speaker"><b>0:40 – 1:40</b> · Give everyone 30 seconds to vote. Then show the results and read them out loud: "So most of you lose … minutes every single day, just looking for a table."</aside>
+  </section>
+
+  <!-- 3 · Il problema -->
+  <section class="slide" data-photo="erwtensoep" aria-label="Slide 3">
+    <img class="bg" alt=""><div class="veil"></div>
+    <div class="content">
+      <p class="kicker">The problem</p>
+      <h2>Lunch break is short.<br>The canteen makes it shorter.</h2>
+      <ul class="cards">
+        <li class="glass"><svg class="ic"><use href="icons.svg#i-armchair"/></svg><div><b>No free seats</b><span>At peak time, thousands of students look for a table at the same moment.</span></div></li>
+        <li class="glass"><svg class="ic"><use href="icons.svg#i-info"/></svg><div><b>Hidden allergens</b><span>Allergens and nutrition values are hard to find at the counter.</span></div></li>
+        <li class="glass"><svg class="ic"><use href="icons.svg#i-qr"/></svg><div><b>Shared discounts</b><span>A screenshot of a student card works for anyone.</span></div></li>
+        <li class="glass"><svg class="ic"><use href="icons.svg#i-utensils"/></svg><div><b>No say in the menu</b><span>Students can't suggest what the canteen cooks.</span></div></li>
+      </ul>
+    </div>
+    <p class="credit"></p>
+    <aside class="speaker"><b>1:40 – 2:40</b> · Four problems. One: no seats at peak time. Two: if you have an allergy, you have to ask at the counter. Three: discounts can be shared with a screenshot. Four: students have no voice in the menu.</aside>
+  </section>
+
+  <!-- 4 · La soluzione -->
+  <section class="slide" data-photo="boerenkool" aria-label="Slide 4">
+    <img class="bg" alt=""><div class="veil"></div>
+    <div class="content">
+      <p class="kicker">The solution</p>
+      <h2>One app for three canteens</h2>
+      <ul class="stats" data-canteens></ul>
+      <ul class="list">
+        <li><svg class="ic"><use href="icons.svg#i-armchair"/></svg>Book a seat for up to 30 minutes, check in with the QR on your table</li>
+        <li><svg class="ic"><use href="icons.svg#i-package"/></svg>Order takeaway, pay in the app, pick it up in a canteen box</li>
+        <li><svg class="ic"><use href="icons.svg#i-utensils"/></svg>One weekly menu with photos, allergens and nutrition values</li>
+        <li><svg class="ic"><use href="icons.svg#i-globe"/></svg>Everything in English and Dutch</li>
+      </ul>
+    </div>
+    <p class="credit"></p>
+    <aside class="speaker"><b>2:40 – 3:30</b> · The app covers FASoS, Law and SBE: 7,500 seats in total. You choose a canteen, then either book a seat or order takeaway. The menu is the same everywhere, with every allergen and nutrition value.</aside>
+  </section>
+
+  <!-- 5 · Demo dal vivo -->
+  <section class="slide" data-photo="salade" aria-label="Slide 5">
+    <div class="half"><img class="bg" alt=""><div class="veil full"></div></div>
+    <div class="content" style="right:55%">
+      <p class="kicker">Live demo</p>
+      <h2>Try it now</h2>
+      <ol class="tasks">
+        <li>Book a seat at FASoS</li>
+        <li>Open My card and watch the QR change</li>
+        <li>Find a vegan dish</li>
+      </ol>
+    </div>
+    <div class="right">
+      <div class="phone"><iframe data-src="index.html" title="Canteen Maastricht, live" tabindex="-1"></iframe></div>
+      <div class="join">
+        <div class="qr small" data-qr="app"></div>
+        <p class="url">canteen-maastricht.expo.app</p>
+      </div>
+    </div>
+    <p class="credit"></p>
+    <aside class="speaker"><b>3:30 – 5:30</b> · Give everyone a minute to try the three tasks on their own phone. Meanwhile, use the phone on screen: show the short tutorial, book a seat at FASoS, press "Simulate scan" to check in, then open My card. Ask: "Who found a vegan dish?"</aside>
+  </section>
+
+  <!-- 6 · La tessera e i punti -->
+  <section class="slide" data-photo="koffie" aria-label="Slide 6">
+    <img class="bg" alt=""><div class="veil"></div>
+    <div class="content">
+      <div class="split" style="align-items:center">
+        <div class="stack">
+          <p class="kicker">My card</p>
+          <h2>A QR code that changes every 3 seconds</h2>
+          <p class="lead">A screenshot doesn't work, so the student discount is used once a day. The same card collects points.</p>
+          <ul class="list" data-rules></ul>
+        </div>
+        <div class="join" style="align-items:center;text-align:center">
+          <div class="qr" data-qr="live"></div>
+          <p class="muted">Live: a new code every 3 seconds</p>
+        </div>
+      </div>
+    </div>
+    <p class="credit"></p>
+    <aside class="speaker"><b>5:30 – 6:45</b> · Point at the QR: it changes while you talk. Then the points: you earn them when you eat, and when you leave your seat on time, so seats free up faster. Free coffees along the way, and a monthly discount for regulars. Everything resets on the first day of the month.</aside>
+  </section>
+
+  <!-- 7 · Cena del mercoledì + sondaggio 2 -->
+  <section class="slide" data-photo="pompoencurry" aria-label="Slide 7">
+    <img class="bg" alt=""><div class="veil"></div>
+    <div class="content">
+      <p class="kicker">Community · Live poll 2 of 3</p>
+      <h2>Students choose Wednesday's dinner</h2>
+      <ul class="steps3">
+        <li><b>Thu – Sat</b><span>Students send their ideas in the app</span></li>
+        <li><b>Sunday</b><span>The canteen team picks the theme</span></li>
+        <li><b>Wednesday 18:30</b><span>Special dinner at FASoS</span></li>
+      </ul>
+      <div class="split" style="align-items:center">
+        <div class="glass poll">
+          <div class="qr small" data-qr="poll"></div>
+          <div><p class="muted">Your turn: suggest a theme on</p><p class="big">menti.com</p><p class="code" data-code></p></div>
+        </div>
+        <p class="lead">Plus "Work with us!": students can apply for a job in the canteen from the app.</p>
+      </div>
+      <a class="results" target="_blank" rel="noopener">Show live results ↗</a>
+    </div>
+    <p class="credit"></p>
+    <aside class="speaker"><b>6:45 – 8:00</b> · Explain the weekly cycle. Then: "Let's try it right now: suggest a theme for next Wednesday." Show the word cloud and pick the funniest idea.</aside>
+  </section>
+
+  <!-- 8 · Lo staff -->
+  <section class="slide" data-photo="hutspot" aria-label="Slide 8">
+    <img class="bg" alt=""><div class="veil"></div>
+    <div class="content">
+      <p class="kicker">Behind the counter</p>
+      <h2>The staff runs it from one panel</h2>
+      <ul class="list">
+        <li><svg class="ic"><use href="icons.svg#i-pencil"/></svg>Change dishes, prices and photos</li>
+        <li><svg class="ic"><use href="icons.svg#i-x"/></svg>Mark a dish as sold out for today</li>
+        <li><svg class="ic"><use href="icons.svg#i-calendar"/></svg>Publish the Wednesday dinner theme</li>
+        <li><svg class="ic"><use href="icons.svg#i-sliders"/></svg>Set the points and discounts</li>
+      </ul>
+      <p class="lead">Next step: a real server, login with the university account and live seat counts.</p>
+    </div>
+    <p class="credit"></p>
+    <aside class="speaker"><b>8:00 – 8:45</b> · The canteen staff doesn't need a developer: they change the menu, mark sold-out dishes and set the rewards from one panel. Today it's a front-end prototype; the next step is a real server and student login.</aside>
+  </section>
+
+  <!-- 9 · Sondaggio 3 e chiusura -->
+  <section class="slide" data-photo="vlaai" aria-label="Slide 9">
+    <img class="bg" alt=""><div class="veil full"></div>
+    <div class="content">
+      <div class="split">
+        <div class="stack">
+          <p class="kicker">Live poll · 3 of 3</p>
+          <h2>Would you use it?</h2>
+          <div class="glass poll">
+            <div class="qr small" data-qr="poll"></div>
+            <div><p class="muted">Vote from 1 to 5 on</p><p class="big">menti.com</p><p class="code" data-code></p></div>
+          </div>
+          <a class="results" target="_blank" rel="noopener">Show live results ↗</a>
+        </div>
+        <div class="join">
+          <h1 style="font-size:5.2cqw">Thank you!</h1>
+          <p class="lead" style="text-align:right">Questions?</p>
+          <div class="qr small" data-qr="app"></div>
+          <p class="url">canteen-maastricht.expo.app</p>
+        </div>
+      </div>
+    </div>
+    <p class="credit"></p>
+    <aside class="speaker"><b>8:45 – 10:00</b> · Last vote: would you use it? Read the average out loud, say thank you and take questions. Leave this slide on screen: the QR stays visible for anyone who wants to try the app later.</aside>
+  </section>
+
+  <div class="bar" id="bar"></div>
+</main>
+
+<div class="notes" id="notes" aria-live="polite"></div>
+<nav class="nav" aria-label="Presentation controls">
+  <button id="prev" aria-label="Previous slide"><svg class="ic" style="font-size:18px"><use href="icons.svg#i-arrow-left"/></svg></button>
+  <span class="count" id="count"></span>
+  <button id="next" aria-label="Next slide"><svg class="ic" style="font-size:18px"><use href="icons.svg#i-chevron-right"/></svg></button>
+  <button id="notes-btn" title="Speaker notes (N)">Notes</button>
+  <button id="full-btn" title="Full screen (F)">Full screen</button>
+</nav>
+
+<script src="data.js"></script>
+<script src="app.js"></script>
+<script>
+// Sondaggi dal vivo con Mentimeter. Quando li hai creati, scrivi qui:
+//   code:    il codice a 8 cifre che il pubblico inserisce su menti.com
+//   link:    il link per votare (Mentimeter → Share → "Voting link"), finisce nel QR delle slide
+//   results: il link della presentazione su Mentimeter, per aprire i risultati dal vivo
+const MENTI = { code: '', link: '', results: '' };
+const APP_URL = 'https://canteen-maastricht.expo.app';
+
+const slides = [...document.querySelectorAll('.slide')];
+let current = 0;
+
+// Foto a tutto schermo (versione grande di Wikimedia) e riga con autore e licenza.
+for (const s of slides) {
+  const ph = PHOTOS[s.dataset.photo];
+  s.querySelector('.bg').src = ph.src.replace('/500px-', '/1280px-');
+  s.querySelector('.credit').textContent = `Photo: ${ph.by}, ${ph.license}, Wikimedia Commons`;
+}
+
+// Codici QR: l'app, il sondaggio e il QR personale che cambia ogni 3 secondi (slide 6).
+const pollQr = MENTI.link || 'https://www.menti.com';
+document.querySelectorAll('[data-qr="app"]').forEach(el => { el.innerHTML = qrSvg(APP_URL); });
+document.querySelectorAll('[data-qr="poll"]').forEach(el => { el.innerHTML = qrSvg(pollQr); });
+document.querySelectorAll('[data-code]').forEach(el => {
+  el.textContent = MENTI.code ? MENTI.code.replace(/\D/g, '').replace(/^(\d{4})(\d+)/, '$1 $2') : '···· ····';
+});
+if (MENTI.results) {
+  document.querySelectorAll('.results').forEach(a => { a.href = MENTI.results; });
+  document.body.classList.add('has-results');
+}
+const liveQr = document.querySelector('[data-qr="live"]');
+let liveStep = '';
+setInterval(() => {
+  const step = String(Math.floor(Date.now() / QR_PERIOD_MS));
+  if (step !== liveStep) { liveStep = step; liveQr.innerHTML = qrSvg(qrToken(STUDENT.id, Date.now())); }
+}, 250);
+
+// Numeri presi dai dati dell'app: se lo staff cambia le regole, anche le slide restano giuste.
+const svgIcon = name => `<svg class="ic"><use href="icons.svg#i-${name}"/></svg>`;
+document.querySelector('[data-canteens]').innerHTML = CANTEENS.map(c =>
+  `<li><b>${c.seats.toLocaleString('en-GB')}</b><span>seats at ${c.name}</span></li>`).join('');
+document.querySelector('[data-rules]').innerHTML = [
+  ['utensils', `${REWARDS.perEuro} points for every €1 you spend`],
+  ['clock', `+${REWARDS.onTime} points if you leave your seat on time`],
+  ['coffee', `A free coffee every ${REWARDS.coffeeEvery} points`],
+  ['star', `${Math.round(REWARDS.goldDiscount * 100)}% off every meal from ${REWARDS.goldAt} points, until the end of the month`],
+].map(([ic, text]) => `<li>${svgIcon(ic)}${text}</li>`).join('');
+
+// Il telefono della demo mostra l'app vera; si carica solo quando arrivi a quella slide.
+const frame = document.querySelector('.phone iframe');
+function fitPhone() {
+  const box = frame.parentElement;
+  frame.style.transform = `scale(${box.clientWidth / 390})`;
+}
+frame.addEventListener('load', () => {
+  // Con il clic dentro il telefono la tastiera va all'app: i tasti del telecomando funzionano lo stesso.
+  try { frame.contentWindow.addEventListener('keydown', onKey); } catch { /* stessa origine: non dovrebbe succedere */ }
+});
+
+function go(i) {
+  current = Math.max(0, Math.min(slides.length - 1, i));
+  slides.forEach((s, k) => {
+    s.classList.toggle('on', k === current);
+    s.setAttribute('aria-hidden', String(k !== current));
+  });
+  const iframeSlide = frame.closest('.slide');
+  if (slides[current] === iframeSlide && !frame.src) { frame.src = frame.dataset.src; fitPhone(); }
+  document.getElementById('count').textContent = `${current + 1} / ${slides.length}`;
+  document.getElementById('bar').style.width = `${((current + 1) / slides.length) * 100}%`;
+  document.getElementById('notes').innerHTML = slides[current].querySelector('.speaker').innerHTML;
+  history.replaceState(null, '', `#${current + 1}`);
+}
+
+function toggleFull() {
+  if (document.fullscreenElement) document.exitFullscreen();
+  else document.documentElement.requestFullscreen().catch(() => {});
+}
+
+// Tasti: frecce, Pag↑/Pag↓ (quelli del telecomando per slide), spazio, Inizio/Fine, F = schermo intero, N = note.
+function onKey(e) {
+  // Mentre scrivi in un campo dell'app (nel telefono della demo) solo i tasti del telecomando cambiano slide.
+  const typing = e.target.closest && e.target.closest('input, textarea, select');
+  if (typing && !['PageDown', 'PageUp'].includes(e.key)) return;
+  if (e.key === ' ' && e.target !== document.body) return;   // lo spazio su un pulsante preme il pulsante
+  if (['ArrowRight', 'PageDown', ' '].includes(e.key)) { e.preventDefault(); go(current + 1); }
+  else if (['ArrowLeft', 'PageUp'].includes(e.key)) { e.preventDefault(); go(current - 1); }
+  else if (e.key === 'Home') go(0);
+  else if (e.key === 'End') go(slides.length - 1);
+  else if (e.key === 'f' || e.key === 'F') toggleFull();
+  else if (e.key === 'n' || e.key === 'N') document.body.classList.toggle('show-notes');
+}
+
+document.addEventListener('keydown', onKey);
+document.getElementById('prev').addEventListener('click', () => go(current - 1));
+document.getElementById('next').addEventListener('click', () => go(current + 1));
+document.getElementById('notes-btn').addEventListener('click', () => document.body.classList.toggle('show-notes'));
+document.getElementById('full-btn').addEventListener('click', toggleFull);
+document.addEventListener('fullscreenchange', () => {
+  document.getElementById('full-btn').textContent = document.fullscreenElement ? 'Exit full screen' : 'Full screen';
+});
+addEventListener('resize', fitPhone);
+
+go((parseInt(location.hash.slice(1), 10) || 1) - 1);
+</script>
+</body>
+</html>
